@@ -1,0 +1,5 @@
+# Dev/test-only - not required to run the real application.
+# mongomock lets test_phase2/3.py exercise the full CRUD + API layer without
+# a running MongoDB server (useful for CI or quick sandboxed checks).
+mongomock>=4.1
+httpx>=0.27          # needed by fastapi.testclient.TestClient (test_phase3.py)

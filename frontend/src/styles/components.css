@@ -1,0 +1,201 @@
+/* ==========================================================================
+   Shared components
+   ========================================================================== */
+
+/* ---- Status dot / badge (Good / Warning / Critical - real semantics) ---- */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.status.good { background: var(--good-soft); color: var(--good); }
+.status.good .status-dot { background: var(--good); }
+.status.warn { background: var(--warn-soft); color: var(--warn); }
+.status.warn .status-dot { background: var(--warn); }
+.status.critical { background: var(--critical-soft); color: var(--critical); }
+.status.critical .status-dot { background: var(--critical); }
+.status.neutral { background: var(--line); color: var(--ink-muted); }
+.status.neutral .status-dot { background: var(--ink-muted); }
+
+/* ---- Score dial ---- */
+
+.score-block { display: flex; align-items: center; gap: 20px; }
+
+.score-ring { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring-track { fill: none; stroke: var(--line); stroke-width: 8; }
+.score-ring-value { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dasharray 0.4s ease; }
+.score-ring-number {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.score-category { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.score-caption { font-size: 12.5px; color: var(--ink-muted); }
+
+/* ---- Deduction / recommendation lists ---- */
+
+.deduction-list, .recommendation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.deduction-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.deduction-row:last-child { border-bottom: none; }
+.deduction-points { font-family: var(--font-mono); color: var(--critical); flex-shrink: 0; }
+
+.recommendation-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.recommendation-item:first-child { padding-top: 0; }
+.recommendation-item:last-child { border-bottom: none; }
+.recommendation-index {
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+  margin-right: 8px;
+}
+
+/* ---- Tables ---- */
+
+table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-weight: 500;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.data-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.data-table tbody tr:hover { background: var(--accent-soft); }
+.data-table td.num, .data-table th.num { font-family: var(--font-mono); text-align: right; }
+
+/* ---- Dataset list rows (Dashboard) ---- */
+
+.dataset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.dataset-row:last-child { border-bottom: none; }
+.dataset-row:hover { background: var(--accent-soft); }
+
+.dataset-row-main { min-width: 0; }
+.dataset-row-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dataset-row-meta { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+.dataset-row-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+/* ---- Empty states ---- */
+
+.empty-state {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--ink-muted);
+}
+.empty-state h3 { color: var(--ink); margin-bottom: 6px; }
+.empty-state p { font-size: 13px; margin-bottom: 16px; }
+
+/* ---- Auth screens ---- */
+
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 32px 28px;
+}
+
+.auth-mark {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.auth-sub { color: var(--ink-muted); font-size: 13px; margin-bottom: 24px; }
+.auth-switch { font-size: 13px; color: var(--ink-muted); margin-top: 18px; text-align: center; }
+
+/* ---- Upload dropzone ---- */
+
+.dropzone {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.dropzone:hover, .dropzone.active { border-color: var(--accent); background: var(--accent-soft); }
+.dropzone input { display: none; }
+.dropzone-hint { font-size: 12px; color: var(--ink-muted); margin-top: 6px; }
+
+/* ---- Cleaning operation builder ---- */
+
+.op-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.op-row:last-child { border-bottom: none; }
+.op-row .field { margin-bottom: 0; flex: 1 1 140px; }
+.op-remove { flex-shrink: 0; }
+
+/* ---- Misc ---- */
+
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.stack-sm > * + * { margin-top: 8px; }
+.stack-md > * + * { margin-top: 16px; }
+.text-muted { color: var(--ink-muted); }
+.badge-count {
+  font-family: var(--font-mono);
+  background: var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+}
