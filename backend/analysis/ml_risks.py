@@ -23,7 +23,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from scipy import stats
-from sklearn.linear_model import LinearRegression
+from pandas.util import hash_pandas_object
 
 from config import (
     CLASS_IMBALANCE_RATIO,
@@ -223,11 +223,20 @@ def detect_multicollinearity(df: pd.DataFrame, numerical_columns: list[str]) -> 
             if X.shape[0] <= X.shape[1]:
                 continue
             try:
-                reg = LinearRegression().fit(X, y)
-                r2 = reg.score(X, y)
+                # Solving the least-squares system directly avoids constructing
+                # a sklearn estimator for every feature while preserving the
+                # same R²-based VIF calculation.
+                coefficients, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
+                residuals = y - X @ coefficients
+                total_variance = float(np.sum((y - y.mean()) ** 2))
+                r2 = (
+                    1.0 - float(np.sum(residuals ** 2)) / total_variance
+                    if total_variance > 0
+                    else 0.0
+                )
                 vif = float("inf") if r2 >= 0.9999 else round(1 / (1 - r2), 2)
                 vif_scores[col] = vif
-            except Exception:
+            except (ValueError, np.linalg.LinAlgError, FloatingPointError):
                 vif_scores[col] = None
 
     high_vif = {
@@ -345,13 +354,21 @@ def train_test_distribution_diff(
     if len(df) < 20 or not numerical_columns:
         return {"applicable": False, "reason": "Needs >=20 rows and >=1 numeric column."}
 
-    train_df, test_df = train_test_split(df, test_size=test_size, random_state=random_state)
+    train_df, test_df = train_test_split(
+        df, test_size=test_size, random_state=random_state
+    )
+    numeric_train = train_df[[c for c in numerical_columns if c in df.columns]].apply(
+        pd.to_numeric, errors="coerce"
+    )
+    numeric_test = test_df[[c for c in numerical_columns if c in df.columns]].apply(
+        pd.to_numeric, errors="coerce"
+    )
     results = {}
     for col in numerical_columns:
         if col not in df.columns:
             continue
-        train_vals = pd.to_numeric(train_df[col], errors="coerce").dropna()
-        test_vals = pd.to_numeric(test_df[col], errors="coerce").dropna()
+        train_vals = numeric_train[col].dropna()
+        test_vals = numeric_test[col].dropna()
         if len(train_vals) < 5 or len(test_vals) < 5:
             continue
         try:
@@ -388,16 +405,25 @@ def detect_duplicate_columns(
     }
 
     cols = list(df.columns)
-    seen: dict[tuple, str] = {}
+    seen: dict[tuple[int, int], list[tuple[str, pd.Series]]] = {}
     for col in cols:
-        # Hash by stringified values so mixed dtypes compare safely
-        key = tuple(df[col].astype(str).fillna("__NA__").tolist())
-        if key in seen:
-            result["exact_duplicates"].append(
-                {"feature_1": seen[key], "feature_2": col}
-            )
+        # Hash candidates first, then compare only collisions. This avoids
+        # creating one Python tuple containing every value for every column.
+        normalized = df[col].astype("string").fillna("__NA__")
+        digest = int(hash_pandas_object(normalized, index=False).sum())
+        key = (digest, len(normalized))
+        candidates = seen.setdefault(key, [])
+        duplicate = next(
+            (name for name, values in candidates if normalized.equals(values)),
+            None,
+        )
+        if duplicate is not None:
+            result["exact_duplicates"].append({
+                "feature_1": duplicate,
+                "feature_2": col,
+            })
         else:
-            seen[key] = col
+            candidates.append((col, normalized))
 
     valid = [c for c in numerical_columns if c in df.columns]
     if len(valid) >= 2:
@@ -499,6 +525,14 @@ def analyze_feature_risks(
     if duplicates is None:
         duplicates = detect_duplicate_columns(df, numerical_columns)
 
+    numerical_set = set(numerical_columns)
+    identifier_like = {
+        column: _is_identifier_like(df[column], column) for column in df.columns
+    }
+    datetime_like = {
+        column: _is_datetime_like(df[column], column) for column in df.columns
+    }
+
     # Map correlated pairs for quick lookup
     correlated_features: dict[str, list[dict]] = {}
     for item in multicollinearity.get("high_correlation_pairs", []):
@@ -570,7 +604,7 @@ def analyze_feature_risks(
             )
 
         # ---- Identifier-like ----
-        if _is_identifier_like(series, column):
+        if identifier_like[column]:
             score += 25
             evidence.append(
                 "Feature appears identifier-like based on its name and/or uniqueness."
@@ -637,7 +671,7 @@ def analyze_feature_risks(
             )
 
         # ---- Outliers (numeric) ----
-        if column in numerical_columns:
+        if column in numerical_set:
             out_pct = _outlier_pct_iqr(series)
             if out_pct >= 5:
                 score += 12
@@ -651,7 +685,7 @@ def analyze_feature_risks(
                 evidence.append(f"{out_pct:.1f}% potential outliers (IQR method).")
 
         # ---- Skewness ----
-        if column in numerical_columns and pd.api.types.is_numeric_dtype(series):
+        if column in numerical_set and pd.api.types.is_numeric_dtype(series):
             numeric_values = pd.to_numeric(series, errors="coerce").dropna()
             if len(numeric_values) >= 8:
                 try:
@@ -676,7 +710,7 @@ def analyze_feature_risks(
                     pass
 
         # ---- Datetime-like (extra signal even if already in leakage) ----
-        if _is_datetime_like(series, column) and column not in leakage_cols:
+        if datetime_like[column] and column not in leakage_cols:
             score += 10
             evidence.append("Column appears to be datetime / temporal.")
             suggested_actions.append(
@@ -696,7 +730,7 @@ def analyze_feature_risks(
             severity = "LOW"
 
         # ---- Recommendation ----
-        if column in leakage_cols or _is_identifier_like(series, column):
+        if column in leakage_cols or identifier_like[column]:
             recommendation = "REVIEW"
         elif unique_count <= 1 or column in exact_dup_set:
             recommendation = "REMOVE"
