@@ -1,5 +1,4 @@
 """Tests for the Precision / Recall (>=90%) Evaluation Framework."""
-import pytest
 
 from app.engine.evaluation import EvaluationSuite, TaskMetric
 

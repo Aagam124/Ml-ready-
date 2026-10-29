@@ -4,7 +4,6 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 
 from app.profiling.semantic import infer_semantic_type

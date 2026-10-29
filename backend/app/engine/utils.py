@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from typing import Iterable, Optional, Set
+from typing import Iterable, Set
 
 import numpy as np
 import pandas as pd

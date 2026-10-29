@@ -5,11 +5,9 @@ Measures Precision, Recall, Specificity, and F1 score against ground-truth label
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict
 
-import numpy as np
-import pandas as pd
 
 from app.benchmark import PLANTS, make_clean, make_planted
 from app.engine.pipeline import run_analysis

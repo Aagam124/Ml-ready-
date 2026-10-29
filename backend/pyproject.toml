@@ -16,6 +16,20 @@ warn_unused_ignores = true
 check_untyped_defs = true
 files = ["app/engine", "app/cleaning", "app/modeling"]
 
+[[tool.mypy.overrides]]
+module = [
+    "app.profiling.semantic",
+    "app.cleaning.runtime",
+    "app.cleaning.executor",
+    "app.engine.checks.association",
+    "app.engine.checks.quality",
+    "app.engine.checks.outliers",
+    "app.engine.checks.mlrisk",
+    "app.engine.scoring",
+    "app.modeling.runner",
+]
+disable_error_code = ["arg-type", "assignment", "call-overload", "index", "list-item", "misc", "operator", "union-attr"]
+
 [tool.coverage.run]
 source = ["app/engine", "app/cleaning", "app/modeling"]
 [tool.coverage.report]

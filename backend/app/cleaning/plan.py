@@ -39,7 +39,7 @@ def propose_plan(findings: List[Dict[str, Any]], profile: Dict[str, Any], target
         enabled = True
         if f["code"] == "target_leakage" and f["evidence"].get("tier") != "Likely":
             enabled = False
-        if f["code"] in ("outliers", "high_cardinality", "identifier_feature", "free_text_column", "near_duplicates", "multicollinearity", "redundant_columns"):
+        if f["code"] in ("outliers", "high_cardinality", "identifier_feature", "free_text_column", "near_duplicates", "multicollinearity"):
             enabled = False
         if f["code"] == "invalid_values" and params.get("action") == "remove":
             enabled = False
@@ -59,11 +59,11 @@ def propose_plan(findings: List[Dict[str, Any]], profile: Dict[str, Any], target
         col_lower = col.lower()
         is_sensitive = any(tok in col_lower for tok in SENSITIVE_OR_NOMINAL)
         if is_num:
-            strategy, params, label = "median", {"strategy": "median"}, f"Fill gaps in '{col}' with median"
+            params, label = {"strategy": "median"}, f"Fill gaps in '{col}' with median"
         elif is_sensitive:
-            strategy, params, label = "constant", {"strategy": "constant", "value": "Unknown"}, f"Fill gaps in '{col}' with 'Unknown' (unbiased)"
+            params, label = {"strategy": "constant", "value": "Unknown"}, f"Fill gaps in '{col}' with 'Unknown' (unbiased)"
         else:
-            strategy, params, label = "mode", {"strategy": "mode"}, f"Fill gaps in '{col}' with most frequent value"
+            params, label = {"strategy": "mode"}, f"Fill gaps in '{col}' with most frequent value"
         steps.append({"step_id": _step_id("fill_after_fix", "impute", [col], params), "op": "impute",
                       "params": params, "columns": [col], "enabled": True,
                       "label": label, "finding_code": "invalid_values", "finding_columns": [col],

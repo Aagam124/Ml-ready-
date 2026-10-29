@@ -1,6 +1,5 @@
 """Tests for the reusable Quality Rules Engine."""
 import pandas as pd
-import pytest
 
 from app.engine.rules import QualityRule, QualityRulesEngine
 

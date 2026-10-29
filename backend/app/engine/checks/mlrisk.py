@@ -86,7 +86,6 @@ class ClassImbalanceCheck(Check):
                    class_weight="balanced", stratify=True, primary_metric="pr_auc")
         if ratio >= 3:
             sev = "high" if ratio >= 20 else "medium" if ratio >= 5 else "low"
-            share = minor / n
             out.append(Finding(
                 code="class_imbalance", category="ml_risk", severity=sev, confidence="high", columns=[ctx.target],
                 evidence={"ratio": round(ratio, 2), "minority_share_pct": pct(minor, n), "majority_class": str(counts.index[0]),
@@ -277,7 +276,7 @@ class MulticollinearityCheck(Check):
         x = num.fillna(num.median())
         corr = np.corrcoef(x.to_numpy(float), rowvar=False)
         vifs = np.clip(np.diag(np.linalg.pinv(corr)), 1.0, 1e6)
-        vif = dict(zip(num.columns, vifs))
+        vif = dict(zip(num.columns, vifs, strict=False))
         high = {c: float(v) for c, v in vif.items() if v > ctx.config.vif_threshold}
         pairs = [(a, b, float(corr[i, j])) for i, a in enumerate(num.columns) for j, b in enumerate(num.columns)
                  if i < j and ctx.config.collinear_corr <= abs(corr[i, j])]
@@ -311,7 +310,7 @@ def _adversarial_auc(a: pd.DataFrame, b: pd.DataFrame, cols: List[str], seed: in
     rf = RandomForestClassifier(n_estimators=100, max_depth=6, random_state=seed, n_jobs=1)
     pred = cross_val_predict(rf, X, y, cv=StratifiedKFold(5, shuffle=True, random_state=seed), method="predict_proba")[:, 1]
     rf.fit(X, y)
-    imp = sorted(zip(cols, rf.feature_importances_), key=lambda t: -t[1])[:3]
+    imp = sorted(zip(cols, rf.feature_importances_, strict=False), key=lambda t: -t[1])[:3]
     return float(roc_auc_score(y, pred)), [(c, round(float(v), 3)) for c, v in imp]
 
 
@@ -491,11 +490,14 @@ class DimensionalityCheck(Check):
         p = sum(min(int(df[c].nunique()), 50) if ctx.semantic(c) in ("categorical",) else 1 for c in use)
         causes = []
         if p > n:
-            sev = "high"; causes.append("more features than rows")
+            sev = "high"
+            causes.append("more features than rows")
         elif n / max(1, p) < 5:
-            sev = "medium"; causes.append("fewer than 5 rows per feature")
+            sev = "medium"
+            causes.append("fewer than 5 rows per feature")
         elif n / max(1, p) < 10:
-            sev = "low"; causes.append("fewer than 10 rows per feature")
+            sev = "low"
+            causes.append("fewer than 10 rows per feature")
         else:
             sev = None
         if n < 100:

@@ -1,5 +1,4 @@
 """Authentication, authorisation and rate limiting (real auth: `auth_client`)."""
-from bson import ObjectId
 
 PW = "correct horse battery"
 

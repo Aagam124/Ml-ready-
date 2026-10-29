@@ -8,7 +8,7 @@ counted once. Money is kept in integer hundredths so deductions sum EXACTLY to 1
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from app.engine.findings import Finding
 
@@ -58,14 +58,14 @@ def compute_deductions(findings: List[Finding]) -> List[int]:
 def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[str, Any]:
     """Sets finding.score_impact and returns the score block stored on the analysis."""
     cents = compute_deductions(findings)
-    for f, c in zip(findings, cents):
+    for f, c in zip(findings, cents, strict=False):
         f.score_impact = c / 100
     total = sum(cents)
     value = (10000 - total) / 100
     deductions = [
         {"code": f.code, "columns": f.columns, "category": f.category, "severity": f.severity, "confidence": f.confidence,
          "points": c / 100}
-        for f, c in zip(findings, cents) if c > 0
+        for f, c in zip(findings, cents, strict=False) if c > 0
     ]
     deductions.sort(key=lambda d: -d["points"])
     # Map finding codes to 5 enterprise data quality dimensions
@@ -76,7 +76,7 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
         "exact_duplicates": "uniqueness", "near_duplicates": "uniqueness", "duplicate_entities_different_ids": "uniqueness",
     }
     dim_deductions = {"completeness": 0.0, "validity": 0.0, "consistency": 0.0, "uniqueness": 0.0, "model_readiness": 0.0}
-    for f, c in zip(findings, cents):
+    for f, c in zip(findings, cents, strict=False):
         pts = c / 100
         dim = dim_map.get(f.code, "model_readiness")
         dim_deductions[dim] = round(dim_deductions[dim] + pts, 2)
@@ -84,7 +84,7 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
 
     return {"value": value, "band": band_for(value), "provisional": provisional, "version": SCORE_VERSION,
             "deductions": deductions, "total_deducted": total / 100, "dimensions": dimensions,
-            "category_totals": {cat: sum(c for f, c in zip(findings, cents) if f.category == cat) / 100 for cat in CATEGORY_CAP}}
+            "category_totals": {cat: sum(c for f, c in zip(findings, cents, strict=False) if f.category == cat) / 100 for cat in CATEGORY_CAP}}
 
 
 def fix_first(findings: List[Finding], limit: int = 3) -> List[Dict[str, Any]]:

@@ -26,11 +26,13 @@ def test_dead_worker_job_is_recovered_and_zombie_cannot_write(database):
 def test_retry_backoff_then_permanent_failure_with_ttl_field(database):
     q, ws = MongoJobQueue(database, max_attempts=2), ObjectId()
     jid = q.enqueue("x", {}, ws)
-    q.claim("w"); q.fail(jid, "boom")
+    q.claim("w")
+    q.fail(jid, "boom")
     j = q.get(jid)
     assert j["status"] == "queued" and j["run_after"] > datetime.utcnow() and q.claim("w") is None
     database.jobs.update_one({"_id": jid}, {"$set": {"run_after": datetime.utcnow()}})
-    q.claim("w"); q.fail(jid, "boom again")
+    q.claim("w")
+    q.fail(jid, "boom again")
     j = q.get(jid)
     assert j["status"] == "failed" and j["expire_at"] > datetime.utcnow()
 

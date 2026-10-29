@@ -224,7 +224,8 @@ def test_remaining_ops_behave():
     assert rt.fix_invalid(df, ["when"], "future_date", "set_missing", as_of="2024-01-01")["when"].isna().sum() == 20
     assert len(rt.fix_invalid(df, ["when"], "future_date", "remove", as_of="2024-01-01")) == 20
     assert set(rt.merge_rare_classes(df, ["y"], min_count=10)["y"]) == {"a", "b", "other"}
-    d2 = df.copy(); d2.loc[:3, "y"] = np.nan
+    d2 = df.copy()
+    d2.loc[:3, "y"] = np.nan
     assert len(rt.drop_missing_target(d2, ["y"])) == len(df) - 4
     conv = rt.convert_units(df, ["w"], "mass", "kg")["w"]
     assert conv.iloc[0] == 70 and abs(conv.iloc[1] - 68.0388555) < 1e-6 and conv.iloc[2] == 0.1 and np.isnan(conv.iloc[4])

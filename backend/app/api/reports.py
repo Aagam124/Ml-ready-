@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Iterator, Optional
+from typing import Optional
 
-from bson import ObjectId
-from fastapi import APIRouter, Depends, Query
-from fastapi.responses import Response, StreamingResponse
+from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app.api.analyses import get_analysis

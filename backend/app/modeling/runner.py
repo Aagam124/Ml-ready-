@@ -162,7 +162,6 @@ def run_arm(name: str, df: pd.DataFrame, target: str, task: str, folds: List[Tup
     te = df.index.intersection(test_labels)
     if len(tr_all) > MAX_TRAIN_ROWS:
         tr_all = pd.Index(np.random.default_rng(seed).choice(tr_all, MAX_TRAIN_ROWS, replace=False))
-    primary = "r2" if task == "regression" else None
     models_out: List[Dict[str, Any]] = []
     metric_names = REG_METRICS if task == "regression" else CLF_METRICS
     rng = np.random.default_rng(seed)

@@ -11,7 +11,7 @@ from scipy import stats
 from app.engine.context import AnalysisContext
 from app.engine.findings import Finding, fix
 from app.engine.registry import Check, register
-from app.engine.utils import (PLACEHOLDERS, association, effective_missing, has_token, is_texty,
+from app.engine.utils import (PLACEHOLDERS, association, effective_missing, is_texty,
                               numeric_view, pct, ratio_text, tokens)
 
 NON_NEGATIVE = {"salary", "wage", "income", "price", "cost", "fare", "age", "quantity", "qty", "count",

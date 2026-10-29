@@ -83,7 +83,6 @@ def make_planted(plants: List[str], seed: int = 1, n: int = 1500) -> Tuple[pd.Da
         df["country"] = "IN"
         expected["constant_column"] = ("constant_column", "country")
     if "imbalance" in plants:
-        keep = df[target] == 0
         pos = np.flatnonzero(df[target] == 1)
         drop = rng.choice(pos, int(len(pos) * 0.93), replace=False)
         df = df.drop(index=df.index[drop]).reset_index(drop=True)

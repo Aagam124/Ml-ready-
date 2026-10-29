@@ -1,5 +1,4 @@
 """Integration tests for the Quality Rules API."""
-import pytest
 
 
 def test_quality_rules_crud_and_checks(auth_client, database):

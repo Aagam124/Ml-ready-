@@ -2,10 +2,8 @@ import hashlib
 import io
 
 import pandas as pd
-import pytest
 
 from app.api.deps import get_workspace
-from app.db import get_database
 from app.demo import generate_demo_dataframe
 
 CSV = generate_demo_dataframe().to_csv(index=False).encode()

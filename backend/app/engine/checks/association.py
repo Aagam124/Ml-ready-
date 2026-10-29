@@ -10,7 +10,7 @@ from sklearn.metrics import balanced_accuracy_score, mutual_info_score, r2_score
 from sklearn.model_selection import KFold, StratifiedKFold
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from app.engine.utils import bin_series, cramers_v, numeric_view
+from app.engine.utils import bin_series, cramers_v
 
 
 def single_feature_score(x: pd.Series, y: pd.Series, task: str, is_numeric: bool, seed: int = 42, folds: int = 3) -> Optional[float]:

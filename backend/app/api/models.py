@@ -1,7 +1,6 @@
 """Honest before/after model runs (background)."""
 from __future__ import annotations
 
-from typing import Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends

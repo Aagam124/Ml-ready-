@@ -1,5 +1,4 @@
 """HTML / PDF reports: content, escaping, honesty notes."""
-import numpy as np
 
 from app.benchmark import make_planted
 from app.cleaning.executor import plan_options, run_plan

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import io
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import pandas as pd
 from bson import ObjectId
@@ -83,7 +83,6 @@ def delete_dataset_everything(database: Database, dataset: Dict[str, Any]) -> Di
     ws, ds = dataset["workspace_id"], dataset["_id"]
     counts: Dict[str, int] = {}
     versions = list(database.versions.find({"dataset_id": ds, "workspace_id": ws}))
-    vids = [v["_id"] for v in versions]
     analyses = list(database.analyses.find({"workspace_id": ws, "dataset_id": ds}, {"_id": 1}))
     aids = [a["_id"] for a in analyses]
     for rep in database.reports.find({"workspace_id": ws, "dataset_id": ds}):

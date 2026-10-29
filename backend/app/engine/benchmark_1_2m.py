@@ -14,13 +14,11 @@ import tempfile
 import time
 import tracemalloc
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 import pyarrow.csv as pv
-import pyarrow.parquet as pq
 
 from app.engine.pipeline import run_analysis
 from app.profiling.profile import profile_dataframe
