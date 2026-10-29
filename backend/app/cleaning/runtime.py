@@ -125,7 +125,7 @@ def merge_rare_classes(df, columns, min_count=10):
     return df
 
 
-def fix_invalid(df, columns, rule, action="set_missing", min=None, max=None, as_of=None, then_cast=None, unexpected=None):
+def fix_invalid(df, columns, rule, action="set_missing", min=None, max=None, as_of=None, then_cast=None, unexpected=None, mapping=None, **kwargs):
     """rule: range | future_date | placeholders | categories. action: set_missing | clip | remove."""
     df = df.copy()
     drop = pd.Series(False, index=df.index)
@@ -135,6 +135,8 @@ def fix_invalid(df, columns, rule, action="set_missing", min=None, max=None, as_
             col = df[c].astype("string").mask(mask) if _is_texty(df[c]) else df[c]
             df[c] = _to_numeric(col) if then_cast == "numeric" else col
         elif rule == "categories":
+            if mapping and isinstance(mapping, dict):
+                df[c] = df[c].replace(mapping)
             bad = df[c].isin(unexpected or [])
             if action == "remove":
                 drop = drop | bad.fillna(False)
@@ -155,11 +157,11 @@ def fix_invalid(df, columns, rule, action="set_missing", min=None, max=None, as_
                 df[c] = v.mask(bad)
         elif rule == "future_date":
             dt = _parse_dates(df[c])
-            bad = dt > pd.Timestamp(as_of) + pd.Timedelta(days=1)
+            bad = (dt > pd.Timestamp(as_of) + pd.Timedelta(days=1)) | (dt.dt.year >= 2100)
             if action == "remove":
                 drop = drop | bad.fillna(False)
             else:
-                df[c] = dt.mask(bad)
+                df[c] = df[c].mask(bad)
     return df.loc[~drop] if drop.any() else df
 
 

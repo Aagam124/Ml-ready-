@@ -16,7 +16,7 @@ from app.engine.utils import (PLACEHOLDERS, association, effective_missing, is_t
 
 NON_NEGATIVE = {"salary", "wage", "income", "price", "cost", "fare", "age", "quantity", "qty", "count",
                 "weight", "height", "revenue", "sales", "population", "tenure", "duration", "distance",
-                "area", "volume", "length", "size"}
+                "area", "volume", "length", "size", "years", "months", "days", "spend", "experience"}
 SIGNED_OK = {"change", "delta", "diff", "difference", "balance", "profit", "loss", "temperature", "temp",
              "return", "growth", "net", "lat", "lon", "latitude", "longitude", "residual", "error"}
 PAST_EVENT = {"birth", "dob", "created", "signup", "joined", "registered", "purchase", "purchased", "order",
@@ -205,8 +205,8 @@ class ConstantColumnsCheck(Check):
             s = df[col]
             nn = s.dropna()
             if nn.empty:
-                out.append(self._f(col, "constant_column", "low", {"n_rows": n, "all_missing": True},
-                                   f"'{col}' is empty in every row.", ctx))
+                out.append(self._f(col, "empty_column", "high", {"n_rows": n, "all_missing": True, "pct": 100.0},
+                                   f"'{col}' is completely empty (100% missing values in every row). It carries zero predictive signal.", ctx))
                 continue
             vc = nn.value_counts()
             top_share = vc.iloc[0] / len(nn)
@@ -260,7 +260,7 @@ class InvalidValuesCheck(Check):
                     if int(bad.sum()) and float(((nn >= 0) & (nn <= 100)).mean()) >= 0.8:
                         masks[col] = bad.fillna(False)
                         out.append(self._invalid(col, False, bad, v, n, len(nn), ctx, bounds=(0, 100)))
-            elif sem == "datetime":
+            if sem == "datetime" or (toks & {"date", "time", "dob", "created", "signup", "joined", "timestamp", "expiry", "due"}):
                 f = self._future_dates(col, ctx, n)
                 if f:
                     out.append(f)
@@ -297,16 +297,40 @@ class InvalidValuesCheck(Check):
         future = dt > ctx.as_of + pd.Timedelta(days=1)
         k = int(future.sum())
         toks = tokens(col)
-        if k == 0 or toks & FUTURE_OK:
+        if k == 0:
             return None
+
+        # Check for sentinel future dates (year >= 2100, such as 2999-01-01 or 9999-12-31)
+        # Even in columns where future dates are normally allowed (e.g. expiry, end_date),
+        # sentinel years >= 2100 are placeholder errors that must not escape cleaning.
+        sentinel_mask = dt.dt.year >= 2100
+        n_sentinel = int(sentinel_mask.sum())
+        is_future_ok = bool(toks & FUTURE_OK)
+
+        if is_future_ok and n_sentinel == 0:
+            return None  # Legitimate future expiry/due dates in the 21st century
+
+        target_mask = sentinel_mask if is_future_ok else future
+        n_flagged = int(target_mask.sum())
+        if n_flagged == 0:
+            return None
+
         past_named = bool(toks & PAST_EVENT)
+        sev = "high" if (past_named or n_sentinel > 0) else "medium"
+        conf = "high"
+
+        flagged_examples = [str(d.date()) for d in dt[target_mask].dropna().head(3)]
+        desc = (f"'{col}' contains sentinel future dates like {flagged_examples} (year >= 2100), which are placeholder values requiring cleaning."
+                if n_sentinel > 0 else
+                f"'{col}' has {ratio_text(k, len(valid), 'dates')} after {ctx.as_of.date()}, which cannot have happened yet.")
+
         return Finding(
-            code="future_dates", category="quality", severity="medium" if past_named else "low",
-            confidence="high" if past_named else "low", columns=[col],
-            evidence={"n_future": k, "n_dates": len(valid), "as_of": str(ctx.as_of.date()),
-                      "denominator": f"{len(valid)} parsed dates"},
-            plain_text=f"'{col}' has {ratio_text(k, len(valid), 'dates')} after {ctx.as_of.date()}, which cannot have happened yet.",
-            technical_text=f"Dates > as_of + 1 day ({ctx.as_of.date()}).",
+            code="future_dates", category="quality", severity=sev,
+            confidence=conf, columns=[col],
+            evidence={"n_future": k, "n_sentinel": n_sentinel, "n_dates": len(valid), "as_of": str(ctx.as_of.date()),
+                      "denominator": f"{len(valid)} parsed dates", "examples": flagged_examples},
+            plain_text=desc,
+            technical_text=f"Dates > as_of + 1 day ({ctx.as_of.date()}); sentinel dates (>= 2100) = {n_sentinel}.",
             fixes=[fix("future_to_missing", "Set future dates to missing", "fix_invalid", [col], rule="future_date",
                        as_of=str(ctx.as_of.date()), action="set_missing")],
             breadth=1 / max(1, len(ctx.feature_columns)), effort="low")

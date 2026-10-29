@@ -36,7 +36,7 @@ def test_applying_default_plan_fixes_planted_problems_and_raises_score():
     r2 = run_analysis(out, target)
     codes = {f["code"] for f in r2["findings"]}
     assert not codes & {"target_leakage", "exact_duplicates", "invalid_values", "inconsistent_categories",
-                        "redundant_columns", "disguised_missing_values", "constant_column"}, codes
+                        "redundant_columns", "disguised_missing_values", "constant_column", "empty_column"}, codes
     assert r2["score"]["value"] > r["score"]["value"] + 20
 
 

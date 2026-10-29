@@ -170,7 +170,7 @@ def test_ml_readiness_score_trustworthiness():
     df = pd.DataFrame({"leak_col": y, "x": range(50), "y": y})
     res = run_analysis(df, target="y")
     assert res["summary"]["unresolved_critical"] >= 1
-    assert res["summary"]["ml_readiness"] == "Not Ready"
+    assert "Not Ready" in res["summary"]["ml_readiness"]
     assert "Not ready" in res["summary"]["headline"]
     assert "ready for machine learning" not in res["summary"]["headline"].lower()
 
@@ -192,3 +192,110 @@ def test_post_event_leakage_detection():
     f = leak_findings[0]
     assert f["severity"] in ("critical", "high")
     assert "post-event" in f["plain_text"].lower() or "prediction time" in f["plain_text"].lower()
+
+
+# 8. P0 Acceptance test: Completely empty feature must be penalized and flagged as empty_column
+def test_empty_feature_penalization():
+    df = pd.DataFrame({
+        "valid_feat": range(50),
+        "completely_empty": [None] * 50,
+        "y": [0, 1] * 25
+    })
+    res = run_analysis(df, target="y")
+    empty_findings = [f for f in res["findings"] if f["code"] == "empty_column" and "completely_empty" in f["columns"]]
+    assert len(empty_findings) == 1
+    assert empty_findings[0]["severity"] == "high"
+    assert res["score"]["validation_checks"]["missing_values"] == "Failed"
+    assert "empty features" in " ".join(res["summary"]["notes"]).lower()
+
+
+# 9. P0 Acceptance test: Target leakage consistency caps score to <= 40 and marks Not Ready
+def test_target_leakage_severe_score_penalty():
+    y = [0, 1] * 30
+    df = pd.DataFrame({"direct_leak": y, "feat": range(60), "y": y})
+    res = run_analysis(df, target="y")
+    assert res["score"]["value"] <= 40.0
+    assert "Not Ready" in res["summary"]["ml_readiness"]
+    assert "Critical target leakage detected" in res["summary"]["headline"]
+
+
+# 10. P1 Acceptance test: Sentinel future dates such as 2999-01-01 are detected and cleaned
+def test_sentinel_future_date_detection_and_cleaning():
+    dates = ["2023-01-15"] * 29 + ["2999-01-01"]
+    df = pd.DataFrame({
+        "contract_expiry_date": dates,
+        "x": range(30),
+        "y": [0, 1] * 15
+    })
+    res = run_analysis(df, target="y")
+    future_findings = [f for f in res["findings"] if f["code"] == "future_dates" and "contract_expiry_date" in f["columns"]]
+    assert len(future_findings) == 1
+    assert future_findings[0]["evidence"]["n_sentinel"] >= 1
+    # Run plan to clean it
+    plan = propose_plan(res["findings"], res["profile"], target="y")
+    cleaned, _, _ = run_plan(df, plan["steps"], target="y")
+    # Verify the 2999 date was not left as 2999
+    assert "2999-01-01" not in str(cleaned["contract_expiry_date"].values)
+
+
+# 11. Acceptance test: Target column preservation during cleaning
+def test_target_column_preservation_and_integrity():
+    df = pd.DataFrame({
+        "id": range(30),
+        "empty_feature": [None] * 30,
+        "x": range(30),
+        "churn": [0, 1] * 15
+    })
+    res = run_analysis(df, target="churn")
+    plan = propose_plan(res["findings"], res["profile"], target="churn")
+    # Even if drop steps exist, target must be preserved
+    cleaned, _, report = run_plan(df, plan["steps"], target="churn")
+    assert "churn" in cleaned.columns
+    assert list(cleaned["churn"]) == list(df["churn"])
+    assert report["target_integrity"]["preserved"] is True
+    assert report["target_integrity"]["labels_intact"] is True
+    assert report["dataset_integrity"]["csv_export_valid"] is True
+
+
+# 12. Acceptance test: Extreme numerical values correctly detected (Age 999, -5, Income -500, 9999999, Years 99)
+def test_extreme_numerical_values_handling():
+    df = pd.DataFrame({
+        "age": [22, 29, 35, 41, 26] * 5 + [24, 38, 999, -5, 27],
+        "monthly_income_inr": [32000, 45000, 58000, 72000, 39000] * 5 + [28000, 68000, -500, 9999999, 42000],
+        "years_as_customer": [2, 5, 8, 12, 3] * 5 + [1, 11, 16, 99, 4],
+        "y": [0, 1] * 15
+    })
+    res = run_analysis(df, target="y")
+    findings = res["findings"]
+    # Age invalid (999 and -5)
+    age_invalid = [f for f in findings if f["code"] == "invalid_values" and "age" in f["columns"]]
+    assert len(age_invalid) >= 1
+    # Income invalid (-500)
+    income_invalid = [f for f in findings if f["code"] == "invalid_values" and "monthly_income_inr" in f["columns"]]
+    assert len(income_invalid) >= 1
+    # Income outlier (9,999,999)
+    income_outlier = [f for f in findings if f["code"] == "outliers" and "monthly_income_inr" in f["columns"]]
+    assert len(income_outlier) >= 1
+    assert income_outlier[0]["evidence"]["n_extreme_3iqr"] >= 1
+    # Years outlier (99)
+    years_outlier = [f for f in findings if f["code"] == "outliers" and "years_as_customer" in f["columns"]]
+    assert len(years_outlier) >= 1
+
+
+# 13. Acceptance test: Detailed cleaning action breakdown (Detected, Corrected, Removed, Flagged, Unchanged)
+def test_cleaning_action_breakdown_audit():
+    df = pd.DataFrame({
+        "id": range(20),
+        "age": [25, 30, 999, 35] * 5,
+        "y": [0, 1] * 10
+    })
+    res = run_analysis(df, target="y")
+    plan = propose_plan(res["findings"], res["profile"], target="y")
+    cleaned, _, report = run_plan(df, plan["steps"], target="y")
+    statuses = {step["status"] for step in report["steps"]}
+    assert "Corrected" in statuses or "Removed" in statuses or "Unchanged" in statuses
+    for step in report["steps"]:
+        assert "status" in step
+        assert "rows_affected" in step
+        assert "cleaning_method" in step
+        assert "reason" in step

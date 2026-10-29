@@ -70,7 +70,7 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
     deductions.sort(key=lambda d: -d["points"])
     # Map finding codes to 5 enterprise data quality dimensions
     dim_map = {
-        "missing_values": "completeness", "disguised_missing_values": "completeness", "target_missing": "completeness",
+        "missing_values": "completeness", "empty_column": "completeness", "disguised_missing_values": "completeness", "target_missing": "completeness",
         "invalid_values": "validity", "future_dates": "validity", "unexpected_categorical_value": "validity",
         "mixed_types": "consistency", "inconsistent_categories": "consistency", "mixed_units": "consistency", "encoding_damage": "consistency",
         "exact_duplicates": "uniqueness", "near_duplicates": "uniqueness", "duplicate_entities_different_ids": "uniqueness",
@@ -86,9 +86,14 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
 
     unresolved_critical = sum(1 for f in findings if f.severity == "critical")
     unresolved_high = sum(1 for f in findings if f.severity == "high")
+    has_critical_leakage = any(f.category == "leakage" and f.severity == "critical" for f in findings)
+
+    # Severe target leakage fundamentally invalidates the dataset for ML; cap score to Poor/Fair band
+    if has_critical_leakage:
+        value = min(value, 40.0)
 
     # Specific validation check statuses
-    val_missing = "Failed" if any(f.code in ("missing_values", "target_missing") and f.severity in ("critical", "high") for f in findings) else "Passed"
+    val_missing = "Failed" if any(f.code in ("missing_values", "empty_column", "target_missing") and f.severity in ("critical", "high") for f in findings) else "Passed"
     val_target = "Not evaluated" if provisional else ("Failed" if any(f.category == "ml_risk" and f.severity in ("critical", "high") and "target" in f.code for f in findings) else "Passed")
     val_leakage = "Not evaluated" if provisional else ("Failed" if any(f.category == "leakage" and f.severity in ("critical", "high") for f in findings) else "Passed")
     val_categories = "Failed" if any(f.code in ("unexpected_categorical_value", "inconsistent_categories") and f.severity in ("critical", "high") for f in findings) else "Passed"
@@ -104,7 +109,9 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
         "outlier_observations": val_outliers,
     }
 
-    if unresolved_critical > 0:
+    if has_critical_leakage:
+        verdict = "Not Ready - Critical Leakage"
+    elif unresolved_critical > 0:
         verdict = "Not Ready"
     elif unresolved_high > 0:
         verdict = "Requires Review"

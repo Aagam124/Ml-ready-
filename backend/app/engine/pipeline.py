@@ -113,17 +113,33 @@ def build_summary(df, ctx: AnalysisContext, findings: List[Finding], score: Dict
                  "Good": "Your data is mostly ready; a few fixes will help.",
                  "Fair": "Your data needs work before modelling.",
                  "Poor": "Your data is not ready for machine learning yet."}
-    if score.get("unresolved_critical", 0) > 0:
+    critical_leaks = [f.columns[0] for f in findings if f.category == "leakage" and f.severity == "critical"]
+    empty_features = [f.columns[0] for f in findings if f.code == "empty_column"]
+
+    if critical_leaks:
+        headline = f"Not ready: Critical target leakage detected in '{critical_leaks[0]}'. Models will fail in production."
+    elif score.get("unresolved_critical", 0) > 0:
         headline = f"Not ready: {score['unresolved_critical']} critical issue(s) must be resolved before modeling."
     elif score.get("unresolved_high", 0) > 0:
         headline = f"Requires review: {score['unresolved_high']} high-severity issue(s) need attention."
     else:
         headline = headlines[score["band"]]
     notes = []
+    if critical_leaks:
+        notes.append(f"Target leakage in {critical_leaks}: feature strongly reveals the target outcome.")
+    if empty_features:
+        notes.append(f"Completely empty features ({', '.join(empty_features[:3])}) carry zero signal and should be dropped.")
     if score["provisional"]:
         notes.append("Select a target to unlock imbalance, leakage and modeling checks. This score is provisional.")
     if ctx.sampled:
         notes.append(f"Analysed a stratified sample of {len(df)} of {ctx.n_rows_original} rows; percentages refer to the sample.")
+
+    outlier_findings = [f for f in findings if "outlier" in f.code]
+    outlier_status = (
+        f"{len(outlier_findings)} feature(s) contain statistical outliers (review recommended before clipping)"
+        if outlier_findings else "No extreme outliers detected"
+    )
+
     return {
         "headline": headline,
         "score": score["value"],
@@ -135,6 +151,7 @@ def build_summary(df, ctx: AnalysisContext, findings: List[Finding], score: Dict
         "notes": notes,
         "unresolved_critical": score.get("unresolved_critical", 0),
         "unresolved_high": score.get("unresolved_high", 0),
+        "outlier_status": outlier_status,
         "validation_checks": score.get("validation_checks", {}),
         "top_fixes": [t["headline"] for t in top]
     }

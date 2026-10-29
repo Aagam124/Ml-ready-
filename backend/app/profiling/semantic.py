@@ -106,11 +106,13 @@ def _classify_numeric(
             return SemanticResult(
                 "identifier", 0.9, [f"Nearly every value is unique and the {why}."], flags
             )
-    if n_unique <= 10:
+    span = float(vals.max() - vals.min())
+    name_lower = name.lower()
+    is_numeric_name = any(tok in name_lower for tok in ("income", "salary", "wage", "amount", "price", "revenue", "spend", "balance", "cost", "years", "tenure", "age", "count", "num"))
+    if n_unique <= 10 and not is_numeric_name and float(vals.max()) <= 20:
         return SemanticResult(
             "categorical", 0.7, ["Few distinct integer values; likely category codes or ratings."], flags
         )
-    span = float(vals.max() - vals.min())
     if unique_ratio > 0.5 and span > 1000:
         return SemanticResult("continuous", 0.75, ["Integer-valued with a wide range."], flags)
     if float(vals.min()) >= 0:

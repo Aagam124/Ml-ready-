@@ -22,7 +22,8 @@ class OutliersCheck(Check):
     depends_on = ("invalid_values", "missing_values", "target_leakage")
 
     def run(self, df, ctx: AnalysisContext) -> List[Finding]:
-        cols = [c for c in ctx.columns_of(*NUMERIC) if c in df.columns]
+        cols = [c for c in ctx.feature_columns if c in ctx.columns_of(*NUMERIC) or
+                (c in df.columns and pd.api.types.is_numeric_dtype(df[c]) and ctx.semantic(c) not in ("identifier", "empty", "constant", "binary"))]
         if not cols:
             return []
         invalid = ctx.shared.get("invalid_masks", {})
@@ -59,22 +60,25 @@ class OutliersCheck(Check):
                 continue
             n_if = int((flagged & if_flags.reindex(nn.index).fillna(False)).sum())
             rate = pct(k, len(nn))
-            if rate > 10:      # that many "outliers" is a distribution shape (bimodal/heavy-tailed), not stray points
+            n_ext = int(extreme.sum())
+            if rate > 10 and n_ext == 0:      # heavy-tailed distribution without extreme 3x-IQR stray points
                 continue
             covered.loc[flagged[flagged].index] = True
+            sev = "medium" if (rate >= 5 or n_ext > 0) else "low"
             out.append(Finding(
-                code="outliers", category="outliers", severity="medium" if rate >= 5 else "low",
+                code="outliers", category="outliers", severity=sev,
                 confidence="high" if (agree.sum() and n_if) else "medium", columns=[c],
                 evidence={"n_outliers": k, "n_values": int(len(nn)), "pct": rate,
                           "denominator": f"{len(nn)} non-missing values", "n_iqr": int(iqr_flag.sum()),
                           "n_mad": int(mad_flag.sum()), "n_both_iqr_and_mad": int(agree.sum()),
-                          "n_extreme_3iqr": int(extreme.sum()), "n_also_isolation_forest": n_if,
+                          "n_extreme_3iqr": n_ext, "n_also_isolation_forest": n_if,
                           "evaluated_on_log_scale": log_scale,
                           "bounds": [round(float(np.expm1(q1 - 1.5 * iqr) if log_scale else q1 - 1.5 * iqr), 4),
                                      round(float(np.expm1(q3 + 1.5 * iqr) if log_scale else q3 + 1.5 * iqr), 4)]},
-                plain_text=f"'{c}' has {ratio_text(k, len(nn), 'non-missing values')} outside the typical statistical range. "
-                           "Review whether these are legitimate observations or recording errors before clipping.",
-                technical_text=f"IQR(1.5x) and MAD(z>3.5) agree on {int(agree.sum())}; 3x-IQR extremes: {int(extreme.sum())}; "
+                plain_text=f"'{c}' has {ratio_text(k, len(nn), 'non-missing values')} outside the typical statistical range"
+                           + (f" (including {n_ext} extreme 3x-IQR values)." if n_ext else ". ")
+                           + " Review whether these are legitimate observations or recording errors before clipping.",
+                technical_text=f"IQR(1.5x) and MAD(z>3.5) agree on {int(agree.sum())}; 3x-IQR extremes: {n_ext}; "
                                f"Isolation Forest agrees on {n_if}." + (" Evaluated on log1p scale (skewed positive data)." if log_scale else ""),
                 fixes=[fix("winsorize", "Clip to the 1st-99th percentile (review recommended)", "winsorize", [c], lower_q=0.01, upper_q=0.99)],
                 breadth=1 / max(1, len(ctx.feature_columns)), effort="low"))
