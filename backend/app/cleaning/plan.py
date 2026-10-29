@@ -39,7 +39,7 @@ def propose_plan(findings: List[Dict[str, Any]], profile: Dict[str, Any], target
         enabled = True
         if f["code"] == "target_leakage" and f["evidence"].get("tier") != "Likely":
             enabled = False
-        if f["code"] in ("outliers", "high_cardinality", "identifier_feature", "free_text_column", "near_duplicates", "multicollinearity", "redundant_columns"):
+        if f["code"] in ("outliers", "high_cardinality", "identifier_feature", "free_text_column", "near_duplicates", "multicollinearity"):
             enabled = False
         if f["code"] == "invalid_values" and params.get("action") == "remove":
             enabled = False

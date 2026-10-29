@@ -42,7 +42,7 @@ def _waterfall(deductions: List[Dict[str, Any]]) -> str:
 
 def _finding(f: Dict[str, Any]) -> str:
     ev = json.dumps(f.get("evidence", {}), indent=2, default=str)
-    cols = f", ".join(f.get("columns", [])[:6])
+    cols = ", ".join(f.get("columns", [])[:6])
     fixes = "".join(f"<li>{E(x['label'])}</li>" for x in f.get("fixes", []))
     return (f'<details class="f"><summary><b class="sev" style="background:{SEV_COLOR.get(f["severity"], "#555")}">{E(f["severity"])}</b> '
             f'{E(f["plain_text"])} <span class="pts">-{f.get("score_impact", 0):.1f} pts</span></summary>'

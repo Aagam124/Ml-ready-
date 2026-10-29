@@ -1,7 +1,6 @@
 """Phase 1 acceptance: a ~100 MB CSV must upload and profile in under 60 seconds.
 Run with:  pytest -m slow -s
 """
-import io
 import os
 import time
 

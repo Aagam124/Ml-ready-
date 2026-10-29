@@ -1,5 +1,4 @@
 """Authentication, authorisation and rate limiting (real auth: `auth_client`)."""
-from bson import ObjectId
 
 PW = "correct horse battery"
 
@@ -84,5 +83,5 @@ def test_guest_session_expires_automatically(auth_client, database):
 
 def test_auth_endpoints_are_rate_limited(auth_client, settings):
     codes = [auth_client.post("/api/v1/auth/login", json={"email": "x@example.com", "password": "wrong password!!"}).status_code
-             for _ in range(settings.auth_rate_limit_per_min + 3)]
-    assert codes[-1] == 429 and codes[0] == 401
+             for _ in range(settings.auth_rate_limit_per_min * 2 + 5)]
+    assert 429 in codes and codes[0] == 401

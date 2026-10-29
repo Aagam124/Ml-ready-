@@ -1,15 +1,12 @@
 """Workspace endpoints: current workspace metadata, usage metering, plan upgrades, and audit logs."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from app.api.deps import audit, editor_workspace, get_workspace
 from app.db import Database, get_database
-from app.errors import APIError
 from app.serialization import serialize
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])

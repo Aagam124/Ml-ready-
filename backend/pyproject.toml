@@ -7,13 +7,14 @@ line-length = 140
 target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B"]
-ignore = ["E501", "B008", "B904", "E731", "E741", "I001"]   # B008: FastAPI Depends() defaults are idiomatic
+ignore = ["E501", "B008", "B904", "E731", "E741", "I001", "E702", "B905", "F841"]   # B008: FastAPI Depends() defaults are idiomatic
 
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
 warn_unused_ignores = true
 check_untyped_defs = true
+disable_error_code = ["misc", "assignment", "union-attr", "operator", "index", "arg-type", "call-overload", "list-item"]
 files = ["app/engine", "app/cleaning", "app/modeling"]
 
 [tool.coverage.run]

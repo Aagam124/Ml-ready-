@@ -8,7 +8,7 @@ counted once. Money is kept in integer hundredths so deductions sum EXACTLY to 1
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from app.engine.findings import Finding
 

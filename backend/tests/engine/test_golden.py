@@ -1,6 +1,5 @@
 """Golden benchmark: every planted problem is found; clean datasets raise nothing serious."""
 import numpy as np
-import pandas as pd
 
 from app.benchmark import PLANTS, make_clean, make_planted
 from app.engine.pipeline import run_analysis

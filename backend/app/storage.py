@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import io
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import pandas as pd
 from bson import ObjectId
