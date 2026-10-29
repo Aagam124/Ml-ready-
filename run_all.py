@@ -43,6 +43,25 @@ def is_port_open(port: int, host: str = "127.0.0.1") -> bool:
         return False
 
 
+def free_port(port: int):
+    """If port is occupied by a leftover process, kill it to prevent WinError 10013."""
+    if sys.platform != "win32":
+        return
+    try:
+        out = subprocess.check_output(f'netstat -ano | findstr ":{port} "', shell=True, text=True)
+        for line in out.strip().splitlines():
+            parts = line.split()
+            if len(parts) >= 5 and "LISTENING" in parts[3].upper():
+                pid = int(parts[-1])
+                if pid > 0 and pid != os.getpid():
+                    print(f"{YELLOW}[*] Freeing occupied port {port} (stopping PID {pid})...{RESET}")
+                    subprocess.run(["taskkill", "/F", "/PID", str(pid)],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    time.sleep(1)
+    except Exception:
+        pass
+
+
 def stream_output(pipe, prefix: str, color: str):
     try:
         for line in iter(pipe.readline, ""):
@@ -67,13 +86,16 @@ def kill_proc_tree(pid: int):
 
 
 def main():
-    # Enable ANSI color escape codes on Windows console
     if sys.platform == "win32":
         os.system("")
 
     print(f"\n{BOLD}{CYAN}===================================================={RESET}")
     print(f"{BOLD}{CYAN}         Starting MLReady SaaS Platform            {RESET}")
     print(f"{BOLD}{CYAN}===================================================={RESET}\n")
+
+    # 0. Clean ports 8000 and 5173 if leftover
+    free_port(8000)
+    free_port(5173)
 
     # 1. MongoDB check
     print(f"[*] Checking MongoDB on port 27017... ", end="", flush=True)
@@ -108,11 +130,11 @@ def main():
 
     try:
         # 2. Start Backend API
-        print(f"{CYAN}[API]{RESET} Starting FastAPI backend on port 8000...")
+        print(f"{CYAN}[API]{RESET} Starting FastAPI backend on http://127.0.0.1:8000...")
         api_env = os.environ.copy()
         api_env["PYTHONPATH"] = str(BACKEND_DIR)
         api_proc = subprocess.Popen(
-            [PYTHON_EXE, "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"],
+            [PYTHON_EXE, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
             cwd=str(BACKEND_DIR),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -138,7 +160,7 @@ def main():
         threading.Thread(target=stream_output, args=(worker_proc.stdout, "[WORKER]", MAGENTA), daemon=True).start()
 
         # 4. Start Frontend
-        print(f"{GREEN}[WEB]{RESET} Starting Vite frontend on port 5173...")
+        print(f"{GREEN}[WEB]{RESET} Starting Vite frontend on http://localhost:5173...")
         web_proc = subprocess.Popen(
             [NPM_CMD, "run", "dev"],
             cwd=str(FRONTEND_DIR),
@@ -153,7 +175,7 @@ def main():
         # 5. Wait for readiness
         def wait_and_open():
             opened = False
-            for _ in range(30):
+            for _ in range(40):
                 time.sleep(1)
                 try:
                     with urllib.request.urlopen("http://localhost:5173", timeout=1) as resp:
