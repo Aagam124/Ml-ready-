@@ -7,24 +7,29 @@ from app.cleaning import runtime as rt
 
 # kind: stateless -> function(df, columns, **params); stateful -> Class(columns, **params).fit(train).transform(df)
 OPS: Dict[str, Dict[str, Any]] = {
-    "strip_whitespace":     {"kind": "stateless", "phase": 0, "impl": "strip_whitespace", "label": "Trim spaces"},
-    "normalize_categories": {"kind": "stateless", "phase": 0, "impl": "normalize_categories", "label": "Merge category spellings"},
-    "fix_encoding":         {"kind": "stateless", "phase": 0, "impl": "fix_encoding", "label": "Repair text encoding"},
-    "cast_type":            {"kind": "stateless", "phase": 0, "impl": "cast_type", "label": "Convert type"},
-    "parse_dates":          {"kind": "stateless", "phase": 0, "impl": "parse_dates", "label": "Parse dates"},
-    "convert_units":        {"kind": "stateless", "phase": 0, "impl": "convert_units", "label": "Convert units"},
-    "merge_rare_classes":   {"kind": "stateless", "phase": 0, "impl": "merge_rare_classes", "label": "Merge rare classes"},
-    "fix_invalid":          {"kind": "stateless", "phase": 0, "impl": "fix_invalid", "label": "Fix invalid values"},
-    "drop_missing_target":  {"kind": "stateless", "phase": 1, "impl": "drop_missing_target", "label": "Remove rows without a target"},
-    "drop_duplicates":      {"kind": "stateless", "phase": 1, "impl": "drop_duplicates", "label": "Remove duplicate rows"},
-    "drop_columns":         {"kind": "stateless", "phase": 2, "impl": "drop_columns", "label": "Drop columns"},
+    # Phase 0: Stateless text hygiene, parsing, and normalization (order-enforced)
+    "fix_encoding":         {"kind": "stateless", "phase": 0, "order": 0, "impl": "fix_encoding", "label": "Repair text encoding"},
+    "strip_whitespace":     {"kind": "stateless", "phase": 0, "order": 1, "impl": "strip_whitespace", "label": "Trim spaces"},
+    "cast_type":            {"kind": "stateless", "phase": 0, "order": 2, "impl": "cast_type", "label": "Convert type"},
+    "parse_dates":          {"kind": "stateless", "phase": 0, "order": 3, "impl": "parse_dates", "label": "Parse dates"},
+    "convert_units":        {"kind": "stateless", "phase": 0, "order": 4, "impl": "convert_units", "label": "Convert units"},
+    "normalize_categories": {"kind": "stateless", "phase": 0, "order": 5, "impl": "normalize_categories", "label": "Merge category spellings"},
+    "merge_rare_classes":   {"kind": "stateless", "phase": 0, "order": 6, "impl": "merge_rare_classes", "label": "Merge rare classes"},
+    "fix_invalid":          {"kind": "stateless", "phase": 0, "order": 7, "impl": "fix_invalid", "label": "Fix invalid values"},
+    # Phase 1: Row drops (after value normalization)
+    "drop_missing_target":  {"kind": "stateless", "phase": 1, "order": 0, "impl": "drop_missing_target", "label": "Remove rows without a target"},
+    "drop_duplicates":      {"kind": "stateless", "phase": 1, "order": 1, "impl": "drop_duplicates", "label": "Remove duplicate rows"},
+    # Phase 2: Column drops
+    "drop_columns":         {"kind": "stateless", "phase": 2, "order": 0, "impl": "drop_columns", "label": "Drop columns"},
+    # Phase 3: Stateful train/test split-aware modeling transformations
     "winsorize":            {"kind": "stateful", "phase": 3, "order": 0, "impl": "Winsorize", "label": "Clip outliers"},
     "impute":               {"kind": "stateful", "phase": 3, "order": 1, "impl": "Impute", "label": "Fill missing values"},
     "bin":                  {"kind": "stateful", "phase": 3, "order": 2, "impl": "Bin", "label": "Bin values"},
     "encode":               {"kind": "stateful", "phase": 3, "order": 3, "impl": "Encode", "label": "Encode categories"},
     "scale":                {"kind": "stateful", "phase": 3, "order": 4, "impl": "Scale", "label": "Scale numbers"},
-    "modeling_option":      {"kind": "option", "phase": 9, "impl": None, "label": "Modeling setting"},
-    "manual":               {"kind": "option", "phase": 9, "impl": None, "label": "Manual action"},
+    # Phase 9: Advisory settings
+    "modeling_option":      {"kind": "option", "phase": 9, "order": 0, "impl": None, "label": "Modeling setting"},
+    "manual":               {"kind": "option", "phase": 9, "order": 0, "impl": None, "label": "Manual action"},
 }
 
 

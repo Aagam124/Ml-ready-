@@ -81,8 +81,44 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
         dim = dim_map.get(f.code, "model_readiness")
         dim_deductions[dim] = round(dim_deductions[dim] + pts, 2)
     dimensions = {dim: max(0.0, round(100.0 - min(100.0, ded * 2.5), 1)) for dim, ded in dim_deductions.items()}
+    # Pure data quality score (average of completeness, validity, consistency, uniqueness)
+    data_quality_score = round(sum(dimensions[d] for d in ("completeness", "validity", "consistency", "uniqueness")) / 4, 1)
+
+    unresolved_critical = sum(1 for f in findings if f.severity == "critical")
+    unresolved_high = sum(1 for f in findings if f.severity == "high")
+
+    # Specific validation check statuses
+    val_missing = "Failed" if any(f.code in ("missing_values", "target_missing") and f.severity in ("critical", "high") for f in findings) else "Passed"
+    val_target = "Not evaluated" if provisional else ("Failed" if any(f.category == "ml_risk" and f.severity in ("critical", "high") and "target" in f.code for f in findings) else "Passed")
+    val_leakage = "Not evaluated" if provisional else ("Failed" if any(f.category == "leakage" and f.severity in ("critical", "high") for f in findings) else "Passed")
+    val_categories = "Failed" if any(f.code in ("unexpected_categorical_value", "inconsistent_categories") and f.severity in ("critical", "high") for f in findings) else "Passed"
+    val_duplicates = "Review needed" if any("duplicate" in f.code for f in findings) else "Passed"
+    val_outliers = "Review needed" if any("outlier" in f.code for f in findings) else "Passed"
+
+    validation_checks = {
+        "missing_values": val_missing,
+        "target_column": val_target,
+        "data_leakage": val_leakage,
+        "category_validity": val_categories,
+        "duplicate_records": val_duplicates,
+        "outlier_observations": val_outliers,
+    }
+
+    if unresolved_critical > 0:
+        verdict = "Not Ready"
+    elif unresolved_high > 0:
+        verdict = "Requires Review"
+    elif provisional:
+        verdict = "Provisional"
+    elif value >= 85:
+        verdict = "Ready for ML"
+    else:
+        verdict = "Needs Improvement"
 
     return {"value": value, "band": band_for(value), "provisional": provisional, "version": SCORE_VERSION,
+            "data_quality_score": data_quality_score, "ml_readiness": verdict,
+            "unresolved_critical": unresolved_critical, "unresolved_high": unresolved_high,
+            "validation_checks": validation_checks,
             "deductions": deductions, "total_deducted": total / 100, "dimensions": dimensions,
             "category_totals": {cat: sum(c for f, c in zip(findings, cents) if f.category == cat) / 100 for cat in CATEGORY_CAP}}
 

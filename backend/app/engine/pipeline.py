@@ -113,11 +113,28 @@ def build_summary(df, ctx: AnalysisContext, findings: List[Finding], score: Dict
                  "Good": "Your data is mostly ready; a few fixes will help.",
                  "Fair": "Your data needs work before modelling.",
                  "Poor": "Your data is not ready for machine learning yet."}
+    if score.get("unresolved_critical", 0) > 0:
+        headline = f"Not ready: {score['unresolved_critical']} critical issue(s) must be resolved before modeling."
+    elif score.get("unresolved_high", 0) > 0:
+        headline = f"Requires review: {score['unresolved_high']} high-severity issue(s) need attention."
+    else:
+        headline = headlines[score["band"]]
     notes = []
     if score["provisional"]:
         notes.append("Select a target to unlock imbalance, leakage and modeling checks. This score is provisional.")
     if ctx.sampled:
         notes.append(f"Analysed a stratified sample of {len(df)} of {ctx.n_rows_original} rows; percentages refer to the sample.")
-    return {"headline": headlines[score["band"]], "score": score["value"], "band": score["band"],
-            "provisional": score["provisional"], "counts": counts, "notes": notes,
-            "top_fixes": [t["headline"] for t in top]}
+    return {
+        "headline": headline,
+        "score": score["value"],
+        "data_quality_score": score.get("data_quality_score", score["value"]),
+        "ml_readiness": score.get("ml_readiness", "Requires Review"),
+        "band": score["band"],
+        "provisional": score["provisional"],
+        "counts": counts,
+        "notes": notes,
+        "unresolved_critical": score.get("unresolved_critical", 0),
+        "unresolved_high": score.get("unresolved_high", 0),
+        "validation_checks": score.get("validation_checks", {}),
+        "top_fixes": [t["headline"] for t in top]
+    }

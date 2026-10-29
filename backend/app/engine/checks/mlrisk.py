@@ -19,6 +19,8 @@ from app.engine.utils import association, numeric_view, pct, ratio_text, safe_sa
 
 NUMERIC_SEM = ("continuous", "count", "discrete", "currency", "percentage")
 LEAK_HINTS = {"leak", "leaked", "leakage", "outcome", "result", "actual", "prediction", "predicted", "label", "target"}
+POST_EVENT_HINTS = {"cancellation", "cancel", "cancelled", "churn_date", "exit_date", "termination",
+                    "terminated", "closed_date", "resolution_date", "refund_date", "disconnection"}
 GENERIC_TOKENS = {"is", "has", "flag", "id", "label", "target", "y", "the", "of", "a", "score", "value", "type"}
 SENSITIVE = {"gender", "sex", "race", "ethnicity", "religion", "caste", "nationality", "marital", "disability",
              "pincode", "zipcode", "zip", "postal", "orientation", "age"}
@@ -134,7 +136,9 @@ class LeakageCheck(Check):
         likely: List[str] = []
         for col in ctx.feature_columns:
             sem = ctx.semantic(col)
-            if sem in ("identifier", "constant", "empty", "text", "email", "url", "phone"):
+            has_post_event = bool(tokens(col) & POST_EVENT_HINTS)
+            has_leak_hint = bool(tokens(col) & LEAK_HINTS)
+            if (sem in ("identifier", "empty", "constant", "phone") and not (has_post_event or has_leak_hint)) or sem in ("email", "url"):
                 continue
             x = sub[col]
             if sem == "datetime":
@@ -163,27 +167,44 @@ class LeakageCheck(Check):
             if task == "regression" and corr >= 0.9995:
                 deterministic = True
             hints = sorted((tokens(col) & LEAK_HINTS) | (tokens(col) & target_toks))
+            post_event_tokens = sorted(tokens(col) & POST_EVENT_HINTS)
+            is_post_event = False
+            if post_event_tokens and task == "binary":
+                notna_mask = x.notna()
+                if notna_mask.sum() >= 3:
+                    overlap = float(((notna_mask) & (y == 1)).sum() / notna_mask.sum())
+                    if overlap >= 0.85:
+                        is_post_event = True
+                        deterministic = True
+
             n_strong = sum(strong.values())
-            if deterministic or n_strong >= 2:
-                tier, sev, conf = "Likely", ("critical" if deterministic or (model or 0) >= 0.99 else "high"), "high"
+            if is_post_event or deterministic or n_strong >= 2:
+                tier, sev, conf = "Likely", ("critical" if (is_post_event or deterministic or (model or 0) >= 0.99) else "high"), "high"
                 likely.append(col)
             elif n_strong == 1:
-                tier, sev, conf = "Possible", "medium", "medium" if hints else "low"
-            elif hints:
+                tier, sev, conf = "Possible", "medium", "medium" if (hints or post_event_tokens) else "low"
+            elif hints or post_event_tokens:
                 tier, sev, conf = "Possible", "low", "low"      # name-only: weak, can never be high severity
             else:
                 continue
-            name_only = n_strong == 0 and not deterministic
+            name_only = n_strong == 0 and not deterministic and not is_post_event
+            if is_post_event:
+                leak_plain = (f"'{col}' records post-event outcome information ({', '.join(post_event_tokens)}) that occurs after '{t}'. "
+                              "In production, this feature will not be available prior to prediction, causing severe target leakage.")
+            else:
+                leak_plain = (f"'{col}' {'almost perfectly gives away' if tier == 'Likely' else 'may reveal'} the answer '{t}'. "
+                              + ("Models using it will look brilliant in testing and fail in real use. "
+                                 if tier == "Likely" else "Check whether it is known before the outcome happens. ")
+                              + ("Only its name raised this flag." if name_only else ""))
+
             out.append(Finding(
                 code="target_leakage", category="leakage", severity=sev, confidence=conf, columns=[col],
                 evidence={"tier": tier, "signals": sig, "strong_signals": [k for k, v in strong.items() if v],
-                          "deterministic": deterministic, "name_hint_tokens": hints, "name_only": name_only,
+                          "deterministic": deterministic, "is_post_event": is_post_event,
+                          "name_hint_tokens": hints + post_event_tokens, "name_only": name_only,
                           "n_rows_scored": int(len(sub)), "denominator": f"{len(sub)} rows scored"},
-                plain_text=(f"'{col}' {'almost perfectly gives away' if tier == 'Likely' else 'may reveal'} the answer '{t}'. "
-                            + ("Models using it will look brilliant in testing and fail in real use. "
-                               if tier == "Likely" else "Check whether it is known before the outcome happens. ")
-                            + ("Only its name raised this flag." if name_only else "")),
-                technical_text=f"{tier} leakage. signals={sig}; deterministic={deterministic}; whole-token name hints={hints}.",
+                plain_text=leak_plain,
+                technical_text=f"{tier} leakage (post_event={is_post_event}). signals={sig}; deterministic={deterministic}; whole-token name hints={hints + post_event_tokens}.",
                 fixes=[fix("drop_leak", f"Drop '{col}' (not available at prediction time)", "drop_columns", [col])],
                 breadth=1.0, effort="low"))
         ctx.shared["leakage_likely"] = likely

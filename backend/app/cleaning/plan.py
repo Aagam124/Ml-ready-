@@ -39,8 +39,11 @@ def propose_plan(findings: List[Dict[str, Any]], profile: Dict[str, Any], target
         enabled = True
         if f["code"] == "target_leakage" and f["evidence"].get("tier") != "Likely":
             enabled = False
-        if f["code"] in ("outliers", "high_cardinality", "identifier_feature", "free_text_column", "near_duplicates", "multicollinearity"):
+        if f["code"] in ("outliers", "high_cardinality", "identifier_feature", "free_text_column",
+                         "near_duplicates", "multicollinearity", "duplicate_entities_different_ids"):
             enabled = False
+        if f["code"] == "missing_values" and f.get("evidence", {}).get("pct", 0) < 1.0:
+            enabled = False   # low missingness (< 1%): user decides whether to clean
         if f["code"] == "invalid_values" and params.get("action") == "remove":
             enabled = False
         key = (op, tuple(sorted(cols)), repr(sorted(params.items(), key=lambda kv: kv[0])))
@@ -69,6 +72,28 @@ def propose_plan(findings: List[Dict[str, Any]], profile: Dict[str, Any], target
                       "label": label, "finding_code": "invalid_values", "finding_columns": [col],
                       "severity": "medium", "preview": None})
     # merge several impute steps with the same strategy? keep separate: each is toggleable by its finding.
+    # Conflict detection and resolution: ensure category normalization takes precedence
+    # so normalized values are not subsequently treated as invalid or replaced with missing values.
+    norm_mappings: Dict[str, Dict[str, str]] = {}
+    for s in steps:
+        if s["op"] == "normalize_categories" and s.get("params", {}).get("mapping"):
+            for c in s["columns"]:
+                norm_mappings[c] = s["params"]["mapping"]
+
+    resolved_steps: List[Dict[str, Any]] = []
+    for s in steps:
+        if s["op"] == "fix_invalid" and s.get("params", {}).get("rule") == "categories":
+            c = s["columns"][0] if s["columns"] else None
+            if c and c in norm_mappings:
+                mapping = norm_mappings[c]
+                unexp = list(s["params"].get("unexpected", []))
+                filtered_unexp = [u for u in unexp if u not in mapping]
+                if not filtered_unexp:
+                    continue  # All values are safely normalized; avoid contradictory missing-replacement
+                s["params"]["unexpected"] = filtered_unexp
+        resolved_steps.append(s)
+    steps = resolved_steps
+
     for s in steps:
         assert s["op"] in OPS, s["op"]
     return {"steps": steps}

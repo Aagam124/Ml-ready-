@@ -151,18 +151,20 @@ class DuplicatesCheck(Check):
             id_dups = int(id_dup_mask.sum())
             if id_dups > 0:
                 share = pct(id_dups, n)
-                severity = "high" if share >= 5 else "medium"
+                severity = "medium" if share < 5 else "high"
+                matching_cols = list(no_ids.columns)
+                preview_indices = [int(i) for i in id_dup_mask[id_dup_mask].index[:10]]
                 out.append(Finding(
                     code="duplicate_entities_different_ids", category="quality", severity=severity,
-                    confidence="high", columns=ids,
+                    confidence="medium", columns=ids,
                     evidence={"n_duplicate_rows": id_dups, "n_rows": n, "pct": share, "ignored_ids": ids,
-                              "denominator": f"{n} rows", "row_indices": [int(i) for i in id_dup_mask[id_dup_mask].index[:10]]},
-                    plain_text=f"{ratio_text(id_dups, n, 'rows')} have identical entity details across all feature columns despite having different {', '.join(ids)}. "
-                               "These are duplicate records created under separate IDs.",
-                    technical_text=f"Exact duplicates across all non-identifier columns (subset = df.columns \\ {ids}): {id_dups}/{n}.",
-                    fixes=[fix("drop_duplicate_entities", f"Remove duplicate records (ignore {', '.join(ids)})", "drop_duplicates",
+                              "matching_columns": matching_cols, "denominator": f"{n} rows", "row_indices": preview_indices},
+                    plain_text=f"{ratio_text(id_dups, n, 'rows')} share identical attributes across all non-identifier columns ({', '.join(matching_cols[:4])}) but have different {', '.join(ids)}. "
+                               "They may represent duplicate entries created under new IDs, or distinct entities with matching profiles; review candidate records before removal.",
+                    technical_text=f"Exact duplicate records across all non-identifier columns ({len(matching_cols)} cols): {id_dups}/{n}.",
+                    fixes=[fix("drop_duplicate_entities", f"Review and remove duplicate records (ignore {', '.join(ids)})", "drop_duplicates",
                                ignore_columns=ids)],
-                    breadth=share / 100, effort="low"))
+                    breadth=share / 100, effort="medium"))
 
         # Near-duplicates after normalising whitespace/case; skipped when collisions are natural.
         if len(ctx.feature_columns) >= 5 and not natural and n >= 20:
@@ -383,14 +385,36 @@ class InvalidValuesCheck(Check):
                     breadth=1 / max(1, len(ctx.feature_columns)), effort="low"))
 
         # unexpected or rare categories in predominantly binary/canonical categorical columns
-        if sem in ("categorical", "binary") and 2 <= nn.nunique() <= 10:
+        approved = set(ctx.config.approved_replacement_categories) | set(ctx.config.allowed_categories.get(col, []))
+        if col in ctx.config.allowed_categories and ctx.config.allowed_categories[col]:
+            allowed = set(ctx.config.allowed_categories[col]) | set(ctx.config.approved_replacement_categories)
+            disallowed_mask = ~nn.isin(allowed)
+            disallowed_count = int(disallowed_mask.sum())
+            if disallowed_count > 0:
+                rare_cats = sorted(set(nn[disallowed_mask]))
+                out.append(Finding(
+                    code="unexpected_categorical_value", category="quality",
+                    severity="high" if disallowed_count / len(nn) >= 0.05 else "medium", confidence="high", columns=[col],
+                    evidence={"unexpected_categories": rare_cats, "allowed_categories": ctx.config.allowed_categories[col],
+                              "n_unexpected": disallowed_count, "n_nonblank": len(nn),
+                              "pct_unexpected": pct(disallowed_count, len(nn)),
+                              "denominator": f"{len(nn)} non-blank values",
+                              "row_indices": [int(i) for i in nn[disallowed_mask].index[:10]]},
+                    plain_text=f"'{col}' contains values outside its configured allowed categories: {rare_cats} ({ratio_text(disallowed_count, len(nn), 'non-blank values')}).",
+                    technical_text=f"Values not in allowed set {ctx.config.allowed_categories[col]}: count {disallowed_count}.",
+                    fixes=[fix("set_unexpected_to_missing", f"Set unapproved values {rare_cats} to missing", "fix_invalid",
+                               [col], rule="categories", unexpected=rare_cats, action="set_missing")],
+                    breadth=1 / max(1, len(ctx.feature_columns)), effort="low"))
+        elif sem in ("categorical", "binary") and 2 <= nn.nunique() <= 10:
             vc = nn.value_counts()
             total_nn = len(nn)
             if len(vc) > 2:
                 top2_share = float(vc.iloc[:2].sum() / total_nn)
                 # If top 2 categories make up >= 85% of rows, any 3rd+ category with frequency <= 5% or count <= 2 is unexpected
+                # Exclude explicitly approved replacement categories (e.g. "Unknown" from safe imputation)
                 if top2_share >= 0.85:
-                    rare_mask = nn.isin(vc.index[2:]) & nn.map(vc).le(max(2, int(0.05 * total_nn)))
+                    unapproved_mask = ~nn.isin(approved)
+                    rare_mask = unapproved_mask & nn.isin(vc.index[2:]) & nn.map(vc).le(max(2, int(0.05 * total_nn)))
                     rare_count = int(rare_mask.sum())
                     if rare_count > 0:
                         rare_cats = sorted(set(nn[rare_mask]))

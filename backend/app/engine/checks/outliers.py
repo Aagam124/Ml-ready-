@@ -72,31 +72,34 @@ class OutliersCheck(Check):
                           "evaluated_on_log_scale": log_scale,
                           "bounds": [round(float(np.expm1(q1 - 1.5 * iqr) if log_scale else q1 - 1.5 * iqr), 4),
                                      round(float(np.expm1(q3 + 1.5 * iqr) if log_scale else q3 + 1.5 * iqr), 4)]},
-                plain_text=f"'{c}' has {ratio_text(k, len(nn), 'non-missing values')} far outside the usual range. "
-                           "Check whether they are real before changing them.",
+                plain_text=f"'{c}' has {ratio_text(k, len(nn), 'non-missing values')} outside the typical statistical range. "
+                           "Review whether these are legitimate observations or recording errors before clipping.",
                 technical_text=f"IQR(1.5x) and MAD(z>3.5) agree on {int(agree.sum())}; 3x-IQR extremes: {int(extreme.sum())}; "
                                f"Isolation Forest agrees on {n_if}." + (" Evaluated on log1p scale (skewed positive data)." if log_scale else ""),
-                fixes=[fix("winsorize", "Clip to the 1st-99th percentile", "winsorize", [c], lower_q=0.01, upper_q=0.99)],
+                fixes=[fix("winsorize", "Clip to the 1st-99th percentile (review recommended)", "winsorize", [c], lower_q=0.01, upper_q=0.99)],
                 breadth=1 / max(1, len(ctx.feature_columns)), effort="low"))
         # Multivariate-only outliers: rows Isolation Forest flags that no single column explains.
         only_mv = if_flags & ~covered
         k = int(only_mv.sum())
-        if len(cols) >= 3 and k >= max(5, int(0.02 * len(df))):
+        rate_mv = pct(k, len(df))
+        if len(cols) >= 3 and len(df) >= 60 and k >= max(5, int(0.02 * len(df))) and rate_mv <= 10.0:
             out.append(Finding(
                 code="multivariate_outliers", category="outliers", severity="low", confidence="low", columns=[],
-                evidence={"n_rows_flagged": k, "n_rows": len(df), "denominator": f"{len(df)} rows",
-                          "method": "IsolationForest(contamination=auto); medians imputed so all rows are scored"},
-                plain_text=f"{ratio_text(k, len(df), 'rows')} look unusual only when columns are combined.",
-                technical_text="Isolation Forest on median-imputed numeric columns, all rows scored; rows already flagged by a single column excluded.",
-                fixes=[], breadth=pct(k, len(df)) / 100, effort="high"))
+                evidence={"n_rows_flagged": k, "n_rows": len(df), "pct": rate_mv, "denominator": f"{len(df)} rows",
+                          "method": f"IsolationForest(contamination={ctx.config.multivariate_contamination}); medians imputed"},
+                plain_text=f"{ratio_text(k, len(df), 'rows')} look unusual only when multiple columns are considered together. "
+                           "These are statistical observations for review, not confirmed errors.",
+                technical_text=f"Isolation Forest on numeric columns (rate {rate_mv:.1f}%), single-column outliers excluded.",
+                fixes=[], breadth=rate_mv / 100, effort="high"))
         return out
 
     @staticmethod
     def _isolation_forest(num: pd.DataFrame, ctx: AnalysisContext) -> pd.Series:
         """Every row is scored: missing cells are median-imputed, never dropped."""
-        if num.shape[1] < 1 or len(num) < 50:
+        if num.shape[1] < 1 or len(num) < 60:
             return pd.Series(False, index=num.index)
         x = num.fillna(num.median()).fillna(0.0)
         x = x.iloc[:, :50]
-        model = IsolationForest(n_estimators=100, contamination="auto", random_state=ctx.config.seed, n_jobs=1)
+        contam = min(0.05, max(0.01, getattr(ctx.config, "multivariate_contamination", 0.02)))
+        model = IsolationForest(n_estimators=100, contamination=contam, random_state=ctx.config.seed, n_jobs=1)
         return pd.Series(model.fit_predict(x) == -1, index=num.index)
