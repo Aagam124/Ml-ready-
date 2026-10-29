@@ -1,0 +1,30 @@
+/** Plain-language definitions shown on hover/focus. Keys are matched as whole words, case-insensitively. */
+export const GLOSSARY: Record<string, string> = {
+  leakage: "When a column gives away the answer, usually because it is only known after the outcome. Models look brilliant in testing and fail in real use.",
+  "target leakage": "A column that gives away the answer you are trying to predict.",
+  target: "The column you want to predict (for example, whether a customer churns).",
+  imbalance: "One outcome is much rarer than the other. A model can score high accuracy just by always guessing the common outcome.",
+  imbalanced: "One outcome is much rarer than the other, so plain accuracy is misleading.",
+  "class weights": "A setting that makes mistakes on the rare outcome count more during training.",
+  "pr-auc": "Area under the precision-recall curve. A fairer score than accuracy when one outcome is rare. Higher is better, 1.0 is perfect.",
+  "roc-auc": "How well a model ranks positives above negatives. 0.5 is a coin flip, 1.0 is perfect.",
+  auc: "Area under a curve that summarises how well a model separates two outcomes. 0.5 is chance, 1.0 is perfect.",
+  vif: "Variance inflation factor: how much a column is explained by the other columns. Above 10 means heavy overlap.",
+  multicollinearity: "Several columns carry nearly the same information, which makes linear models unstable.",
+  outliers: "Values far outside the usual range. They may be errors or real extremes, so check before changing them.",
+  imputation: "Filling in missing values with a sensible estimate such as the median.",
+  impute: "Fill in missing values with a sensible estimate such as the median.",
+  winsorize: "Clip extreme values to a chosen percentile instead of deleting them.",
+  "cross-validation": "Training and testing several times on different slices of the data to see how stable a score is.",
+  stratified: "Each slice keeps the same mix of outcomes as the whole dataset.",
+  "mcar": "Missing completely at random: the gaps do not depend on anything.",
+  mar: "Missing at random: the gaps depend on other columns you can see.",
+  "isolation forest": "An algorithm that finds rows that are easy to separate from the rest, a sign they are unusual.",
+  "adversarial validation": "Training a model to tell training rows from test rows. If it can, the two sets differ and test scores will mislead.",
+  "one-hot": "Turning a category into one yes/no column per value.",
+  "target encoding": "Replacing a category with the average outcome for that category, computed without peeking at the row's own answer.",
+  provisional: "The score is not final because no target column has been chosen yet.",
+  winsorise: "Clip extreme values to a chosen percentile instead of deleting them.",
+};
+const TERMS = Object.keys(GLOSSARY).sort((a, b) => b.length - a.length);
+export const TERM_RE = new RegExp(`\\b(${TERMS.map((t) => t.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")).join("|")})\\b`, "gi");

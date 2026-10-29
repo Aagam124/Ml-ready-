@@ -1,0 +1,23 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: needs MLREADY_TEST_BIG=1"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = ["E501", "B008", "B904", "E731", "E741", "I001"]   # B008: FastAPI Depends() defaults are idiomatic
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+check_untyped_defs = true
+files = ["app/engine", "app/cleaning", "app/modeling"]
+
+[tool.coverage.run]
+source = ["app/engine", "app/cleaning", "app/modeling"]
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
