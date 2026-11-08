@@ -87,6 +87,12 @@ def test_normal_data_produces_no_outlier_findings():
     assert not find(run_analysis(df, "y"), "outliers")
 
 
+def test_clean_benchmark_data_outliers_stay_low_severity():
+    df, target = make_clean("binary", seed=0)
+    outs = find(run_analysis(df, target), "outliers")
+    assert all(f["severity"] == "low" for f in outs)
+
+
 def test_leakage_deterministic_categorical_mirror():
     df, target = make_clean("binary", n=800)
     df["churn_label_text"] = np.where(df[target] == 1, "yes", "no")
