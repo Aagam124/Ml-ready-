@@ -25,6 +25,18 @@ def test_score_within_bounds_and_deductions_sum_exactly():
         assert round(100 - s["value"], 2) == round(sum(d["points"] for d in s["deductions"]), 2) == round(sum(f.score_impact for f in fs), 2)
 
 
+def test_critical_leakage_cap_preserves_deduction_invariants():
+    fs = [
+        Finding(code="target_leakage", category="leakage", severity="critical", confidence="high",
+                columns=["direct_leak"], evidence={}, plain_text="p", technical_text="t", breadth=0.8),
+        Finding(code="near_duplicates", category="quality", severity="high", confidence="high",
+                columns=["x"], evidence={}, plain_text="p", technical_text="t", breadth=0.5),
+    ]
+    s = score_findings(fs)
+    assert s["value"] <= 40.0
+    assert round(100 - s["value"], 2) == round(sum(d["points"] for d in s["deductions"]), 2) == round(sum(f.score_impact for f in fs), 2)
+
+
 def test_category_cap_respected():
     rng = random.Random(1)
     for _ in range(200):

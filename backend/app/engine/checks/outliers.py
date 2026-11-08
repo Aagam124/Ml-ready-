@@ -64,7 +64,8 @@ class OutliersCheck(Check):
             if rate > 10 and n_ext == 0:      # heavy-tailed distribution without extreme 3x-IQR stray points
                 continue
             covered.loc[flagged[flagged].index] = True
-            sev = "medium" if (rate >= 5 or n_ext > 0) else "low"
+            extreme_medium_threshold = max(5, int(np.ceil(0.005 * len(nn))))
+            sev = "medium" if (rate >= 5 or n_ext > extreme_medium_threshold) else "low"
             out.append(Finding(
                 code="outliers", category="outliers", severity=sev,
                 confidence="high" if (agree.sum() and n_if) else "medium", columns=[c],
