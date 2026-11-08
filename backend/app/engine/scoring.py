@@ -58,10 +58,30 @@ def compute_deductions(findings: List[Finding]) -> List[int]:
 def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[str, Any]:
     """Sets finding.score_impact and returns the score block stored on the analysis."""
     cents = compute_deductions(findings)
-    for f, c in zip(findings, cents):
-        f.score_impact = c / 100
+    category_totals = {cat: sum(c for f, c in zip(findings, cents) if f.category == cat) / 100 for cat in CATEGORY_CAP}
     total = sum(cents)
     value = (10000 - total) / 100
+    has_critical_leakage = any(f.category == "leakage" and f.severity == "critical" for f in findings)
+    # Severe target leakage fundamentally invalidates the dataset for ML; cap score to Poor/Fair band.
+    # Keep deduction invariants exact by attributing any cap gap to the critical leakage findings.
+    if has_critical_leakage and value > 40.0:
+        penalty_cents = int(round((value - 40.0) * 100))
+        idx = [i for i, f in enumerate(findings) if f.category == "leakage" and f.severity == "critical"]
+        if idx and penalty_cents > 0:
+            base = [max(1, cents[i]) for i in idx]
+            base_total = sum(base)
+            exact = [b * penalty_cents / base_total for b in base]
+            floors = [int(e) for e in exact]
+            rest = penalty_cents - sum(floors)
+            order = sorted(range(len(idx)), key=lambda j: (-(exact[j] - floors[j]), idx[j]))
+            for j in order[:rest]:
+                floors[j] += 1
+            for j, i in enumerate(idx):
+                cents[i] += floors[j]
+            total = sum(cents)
+            value = (10000 - total) / 100
+    for f, c in zip(findings, cents):
+        f.score_impact = c / 100
     deductions = [
         {"code": f.code, "columns": f.columns, "category": f.category, "severity": f.severity, "confidence": f.confidence,
          "points": c / 100}
@@ -86,11 +106,6 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
 
     unresolved_critical = sum(1 for f in findings if f.severity == "critical")
     unresolved_high = sum(1 for f in findings if f.severity == "high")
-    has_critical_leakage = any(f.category == "leakage" and f.severity == "critical" for f in findings)
-
-    # Severe target leakage fundamentally invalidates the dataset for ML; cap score to Poor/Fair band
-    if has_critical_leakage:
-        value = min(value, 40.0)
 
     # Specific validation check statuses
     val_missing = "Failed" if any(f.code in ("missing_values", "empty_column", "target_missing") and f.severity in ("critical", "high") for f in findings) else "Passed"
@@ -127,7 +142,7 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
             "unresolved_critical": unresolved_critical, "unresolved_high": unresolved_high,
             "validation_checks": validation_checks,
             "deductions": deductions, "total_deducted": total / 100, "dimensions": dimensions,
-            "category_totals": {cat: sum(c for f, c in zip(findings, cents) if f.category == cat) / 100 for cat in CATEGORY_CAP}}
+            "category_totals": category_totals}
 
 
 def fix_first(findings: List[Finding], limit: int = 3) -> List[Dict[str, Any]]:
