@@ -57,7 +57,27 @@ def compute_deductions(findings: List[Finding]) -> List[int]:
 
 def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[str, Any]:
     """Sets finding.score_impact and returns the score block stored on the analysis."""
-    cents = compute_deductions(findings)
+    base_cents = compute_deductions(findings)
+    cents = list(base_cents)
+    total = sum(cents)
+
+    # Critical target leakage invalidates ML readiness; enforce a 40-point ceiling while keeping
+    # deductions and finding impacts arithmetically consistent.
+    leakage_critical_idx = [i for i, f in enumerate(findings) if f.category == "leakage" and f.severity == "critical"]
+    cap_floor_cents = 6000  # score <= 40.00  <=>  total deductions >= 60.00
+    extra = cap_floor_cents - total
+    if leakage_critical_idx and extra > 0:
+        weights = [max(1, cents[i]) for i in leakage_critical_idx]
+        w_sum = sum(weights)
+        exact = [extra * w / w_sum for w in weights]
+        floors = [int(v) for v in exact]
+        rest = extra - sum(floors)
+        order = sorted(range(len(leakage_critical_idx)), key=lambda j: (-(exact[j] - floors[j]), leakage_critical_idx[j]))
+        for j in order[:rest]:
+            floors[j] += 1
+        for j, i in enumerate(leakage_critical_idx):
+            cents[i] += floors[j]
+
     for f, c in zip(findings, cents):
         f.score_impact = c / 100
     total = sum(cents)
@@ -86,11 +106,7 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
 
     unresolved_critical = sum(1 for f in findings if f.severity == "critical")
     unresolved_high = sum(1 for f in findings if f.severity == "high")
-    has_critical_leakage = any(f.category == "leakage" and f.severity == "critical" for f in findings)
-
-    # Severe target leakage fundamentally invalidates the dataset for ML; cap score to Poor/Fair band
-    if has_critical_leakage:
-        value = min(value, 40.0)
+    has_critical_leakage = bool(leakage_critical_idx)
 
     # Specific validation check statuses
     val_missing = "Failed" if any(f.code in ("missing_values", "empty_column", "target_missing") and f.severity in ("critical", "high") for f in findings) else "Passed"
@@ -127,7 +143,7 @@ def score_findings(findings: List[Finding], provisional: bool = False) -> Dict[s
             "unresolved_critical": unresolved_critical, "unresolved_high": unresolved_high,
             "validation_checks": validation_checks,
             "deductions": deductions, "total_deducted": total / 100, "dimensions": dimensions,
-            "category_totals": {cat: sum(c for f, c in zip(findings, cents) if f.category == cat) / 100 for cat in CATEGORY_CAP}}
+            "category_totals": {cat: sum(c for f, c in zip(findings, base_cents) if f.category == cat) / 100 for cat in CATEGORY_CAP}}
 
 
 def fix_first(findings: List[Finding], limit: int = 3) -> List[Dict[str, Any]]:

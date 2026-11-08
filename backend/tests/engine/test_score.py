@@ -25,6 +25,19 @@ def test_score_within_bounds_and_deductions_sum_exactly():
         assert round(100 - s["value"], 2) == round(sum(d["points"] for d in s["deductions"]), 2) == round(sum(f.score_impact for f in fs), 2)
 
 
+def test_critical_leakage_cap_keeps_deductions_exact():
+    fs = [
+        Finding(code="target_leakage_a", category="leakage", severity="critical", confidence="high",
+                columns=["a"], evidence={}, plain_text="p", technical_text="t", breadth=0.2),
+        Finding(code="target_leakage_b", category="leakage", severity="critical", confidence="high",
+                columns=["b"], evidence={}, plain_text="p", technical_text="t", breadth=0.2),
+    ]
+    s = score_findings(fs)
+    assert s["value"] == 40.0
+    assert round(100 - s["value"], 2) == round(sum(d["points"] for d in s["deductions"]), 2) == round(sum(f.score_impact for f in fs), 2)
+    assert s["category_totals"]["leakage"] <= CATEGORY_CAP["leakage"] + 1e-9
+
+
 def test_category_cap_respected():
     rng = random.Random(1)
     for _ in range(200):
