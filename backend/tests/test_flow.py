@@ -1,6 +1,12 @@
 """The core journey through the real API, with the worker run inline: demo -> target -> analysis -> plan -> apply -> models -> report."""
 import pytest
+from bson import ObjectId
 
+import app.api.analyses as analyses_api
+import app.engine.pipeline as pipeline_module
+from app.engine import registry
+from app.engine.registry import Check
+from app.jobs.queue import MongoJobQueue
 from app.jobs.worker import Worker
 
 
@@ -98,6 +104,100 @@ def test_core_journey(session):
     assert gone["deleted"] and gone["counts"]["findings"] > 0
     assert database.db["fs.files"].count_documents({}) == 0          # no leftover files anywhere
     assert c.get(f"/api/v1/datasets/{ds}", headers=h).status_code == 404
+
+
+def test_check_failure_persists_partial_analysis_and_keeps_findings(session):
+    c, h, drain, database = session
+
+    class BrokenCheck(Check):
+        id = "lifecycle_broken_check"
+
+        def run(self, df, ctx):
+            raise RuntimeError("deliberate check failure")
+
+    registry.REGISTRY[BrokenCheck.id] = BrokenCheck()
+    try:
+        ds = c.post("/api/v1/datasets/demo", headers=h).json()["dataset"]["id"]
+        started = c.post(f"/api/v1/datasets/{ds}/analyses", headers=h, json={"target_column": "churned"}).json()
+        drain()
+
+        analysis = c.get(f"/api/v1/analyses/{started['analysis_id']}", headers=h).json()
+        job = c.get(f"/api/v1/jobs/{started['job_id']}", headers=h).json()
+        findings = c.get(f"/api/v1/analyses/{started['analysis_id']}/findings", headers=h).json()
+
+        assert analysis["status"] == "partial"
+        assert analysis["check_errors"] == [{"check": BrokenCheck.id, "error": "RuntimeError: deliberate check failure"}]
+        assert analysis["checks_completed"] and analysis["score"]["ml_readiness"] == "Incomplete validation"
+        assert "Incomplete analysis" in analysis["summary"]["headline"]
+        assert findings["total"] == analysis["n_findings"] > 0
+        assert job["status"] == "succeeded"
+        assert c.post(f"/api/v1/analyses/{started['analysis_id']}/plan", headers=h).status_code == 409
+        assert c.post(f"/api/v1/analyses/{started['analysis_id']}/reports", headers=h,
+                      json={"format": "html"}).status_code == 409
+    finally:
+        del registry.REGISTRY[BrokenCheck.id]
+
+
+def test_analysis_with_no_successful_checks_is_failed_and_has_no_score(session, monkeypatch):
+    c, h, drain, _ = session
+
+    class BrokenCheck(Check):
+        id = "lifecycle_only_broken_check"
+
+        def run(self, df, ctx):
+            raise RuntimeError("no usable checks")
+
+    monkeypatch.setattr(pipeline_module, "ordered_checks", lambda: [BrokenCheck()])
+    ds = c.post("/api/v1/datasets/demo", headers=h).json()["dataset"]["id"]
+    started = c.post(f"/api/v1/datasets/{ds}/analyses", headers=h, json={"target_column": "churned"}).json()
+    drain()
+
+    analysis = c.get(f"/api/v1/analyses/{started['analysis_id']}", headers=h).json()
+    job = c.get(f"/api/v1/jobs/{started['job_id']}", headers=h).json()
+    assert analysis["status"] == "failed"
+    assert analysis["error"] == "No engine checks completed successfully."
+    assert analysis["check_errors"] == [{"check": BrokenCheck.id, "error": "RuntimeError: no usable checks"}]
+    assert "score" not in analysis and "summary" not in analysis
+    assert job["status"] == "succeeded" and "score" not in job["result"]
+
+
+def test_initial_analysis_enqueue_failure_marks_analysis_failed(session, monkeypatch):
+    c, h, _, database = session
+    ds = c.post("/api/v1/datasets/demo", headers=h).json()["dataset"]["id"]
+
+    class FailingQueue:
+        def enqueue(self, *args, **kwargs):
+            raise RuntimeError("queue unavailable")
+
+    monkeypatch.setattr(analyses_api, "queue_for", lambda *args: FailingQueue())
+    with pytest.raises(RuntimeError, match="queue unavailable"):
+        c.post(f"/api/v1/datasets/{ds}/analyses", headers=h, json={"target_column": "churned"})
+
+    analysis = database.analyses.find_one()
+    assert analysis["status"] == "failed"
+    assert analysis["error"] == "Analysis job could not be queued."
+    assert database.analyses.count_documents({"status": "queued"}) == 0
+
+
+def test_followup_analysis_enqueue_failure_marks_child_failed(session, monkeypatch):
+    c, h, drain, database = session
+    ds = c.post("/api/v1/datasets/demo", headers=h).json()["dataset"]["id"]
+    parent = c.post(f"/api/v1/datasets/{ds}/analyses", headers=h, json={"target_column": "churned"}).json()
+    drain()
+    plan = c.post(f"/api/v1/analyses/{parent['analysis_id']}/plan", headers=h).json()
+    apply = c.post(f"/api/v1/plans/{plan['id']}/apply", headers=h).json()
+
+    def fail_enqueue(self, *args, **kwargs):
+        raise RuntimeError("follow-up queue unavailable")
+
+    monkeypatch.setattr(MongoJobQueue, "enqueue", fail_enqueue)
+    drain()
+
+    child = database.analyses.find_one({"compared_to": ObjectId(parent["analysis_id"])})
+    assert child["status"] == "failed"
+    assert "follow-up queue unavailable" in child["error"]
+    assert database.analyses.count_documents({"compared_to": ObjectId(parent["analysis_id"]), "status": "queued"}) == 0
+    assert database.jobs.find_one({"_id": ObjectId(apply["job_id"])})["status"] == "queued"
 
 
 def test_unsuitable_or_unknown_target_is_rejected_with_advice(session):

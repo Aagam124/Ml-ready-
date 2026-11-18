@@ -70,7 +70,12 @@ def create_analysis(dataset_id: str, body: AnalysisRequest, database: Database =
                 "target_column": body.target_column, "task_type": task, "config": cfg.snapshot(), "status": "queued",
                 "created_at": now(), "created_by": ws.get("_user_id")}
     database.analyses.insert_one(analysis)
-    job_id = queue_for(database, settings).enqueue("analysis", {"analysis_id": str(analysis["_id"]), "dataset_id": str(ds["_id"])}, ws["_id"])
+    try:
+        job_id = queue_for(database, settings).enqueue("analysis", {"analysis_id": str(analysis["_id"]), "dataset_id": str(ds["_id"])}, ws["_id"])
+    except Exception:
+        database.analyses.update_one({"_id": analysis["_id"]}, {"$set": {
+            "status": "failed", "error": "Analysis job could not be queued.", "finished_at": now()}})
+        raise
     database.analyses.update_one({"_id": analysis["_id"]}, {"$set": {"job_id": job_id}})
     audit(database, ws, "analysis.create", str(analysis["_id"]))
     return {"analysis_id": str(analysis["_id"]), "job_id": str(job_id), "status": "queued"}
@@ -126,7 +131,7 @@ def diff_analyses(a_findings: List[dict], b_findings: List[dict], a: dict, b: di
 def compare(a_id: str, b_id: str, database: Database = Depends(get_database), ws: dict = Depends(get_workspace)):
     a, b = get_analysis(database, ws, a_id), get_analysis(database, ws, b_id)
     if a["status"] != "done" or b["status"] != "done":
-        raise APIError(409, "analysis_not_ready", "Both analyses must be finished before they can be compared.")
+        raise APIError(409, "analysis_not_ready", "Both analyses must be complete with full check coverage before they can be compared.")
     fa = list(database.findings.find({"analysis_id": a["_id"], "workspace_id": ws["_id"]}))
     fb = list(database.findings.find({"analysis_id": b["_id"], "workspace_id": ws["_id"]}))
     return serialize({"a": a_id, "b": b_id, **diff_analyses(fa, fb, a, b)})

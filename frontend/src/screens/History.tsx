@@ -124,9 +124,10 @@ export function History({ flow, setFlow, go }: ScreenProps) {
                   <td className="num">
                     {a.score ? a.score.value.toFixed(1) : "…"}
                     {a.score?.provisional ? " (provisional)" : ""}
+                    {a.status === "partial" ? " (partial)" : ""}
                   </td>
                   <td>
-                    <span className={`badge ${a.status === "done" ? "sev-low" : "sev-info"}`}>{a.status}</span>
+                    <span className={`badge ${a.status === "done" ? "sev-low" : a.status === "partial" ? "sev-medium" : a.status === "failed" ? "sev-critical" : "sev-info"}`}>{a.status}</span>
                   </td>
                 </tr>
               ))}

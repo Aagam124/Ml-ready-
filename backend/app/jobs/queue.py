@@ -22,8 +22,8 @@ class JobQueueProtocol(Protocol):
     def enqueue(self, type: str, payload: Dict[str, Any], workspace_id: ObjectId) -> ObjectId: ...
     def claim(self, worker_id: str) -> Optional[Dict[str, Any]]: ...
     def heartbeat(self, job_id: ObjectId, worker_id: str, progress: float, message: str) -> bool: ...
-    def complete(self, job_id: ObjectId, result: Optional[Dict[str, Any]] = None) -> None: ...
-    def fail(self, job_id: ObjectId, error: str) -> None: ...
+    def complete(self, job_id: ObjectId, worker_id: str, result: Optional[Dict[str, Any]] = None) -> bool: ...
+    def fail(self, job_id: ObjectId, worker_id: str, error: str, final: bool = False) -> Optional[str]: ...
     def get(self, job_id: ObjectId) -> Optional[Dict[str, Any]]: ...
 
 
@@ -50,9 +50,6 @@ class MongoJobQueue:
             {"$set": {"status": "running", "locked_by": worker_id, "heartbeat_at": now, "updated_at": now,
                       "message": "Started"}, "$inc": {"attempts": 1}},
             sort=[("created_at", 1)], return_document=ReturnDocument.AFTER)
-        if job and job["attempts"] > self.max_attempts:       # a job that keeps killing workers must not loop forever
-            self.fail(job["_id"], "Gave up after repeated worker failures.", final=True)
-            return self.claim(worker_id)
         return job
 
     def heartbeat(self, job_id: ObjectId, worker_id: str, progress: float, message: str) -> bool:
@@ -61,24 +58,31 @@ class MongoJobQueue:
                                   {"$set": {"heartbeat_at": now, "updated_at": now, "progress": round(float(progress), 4), "message": message}})
         return res.matched_count == 1       # False => someone else took the job over; stop working on it
 
-    def complete(self, job_id: ObjectId, result: Optional[Dict[str, Any]] = None) -> None:
+    def complete(self, job_id: ObjectId, worker_id: str, result: Optional[Dict[str, Any]] = None) -> bool:
         now = _now()
-        self.col.update_one({"_id": job_id}, {"$set": {"status": "succeeded", "progress": 1.0, "message": "Done", "result": result,
-                                                      "updated_at": now, "finished_at": now,
-                                                      "expire_at": now + timedelta(days=self.ttl_days)}})
+        res = self.col.update_one({"_id": job_id, "locked_by": worker_id, "status": "running"},
+                                  {"$set": {"status": "succeeded", "progress": 1.0, "message": "Done", "result": result,
+                                            "locked_by": None, "heartbeat_at": None, "updated_at": now, "finished_at": now,
+                                            "expire_at": now + timedelta(days=self.ttl_days)}})
+        return res.matched_count == 1
 
-    def fail(self, job_id: ObjectId, error: str, final: bool = False) -> None:
+    def fail(self, job_id: ObjectId, worker_id: str, error: str, final: bool = False) -> Optional[str]:
         now = _now()
-        job = self.col.find_one({"_id": job_id})
-        if job and not final and job["attempts"] < self.max_attempts:
+        owned = {"_id": job_id, "locked_by": worker_id, "status": "running"}
+        job = self.col.find_one(owned)
+        if job is None:
+            return None
+        if not final and job["attempts"] < self.max_attempts:
             backoff = 2 ** job["attempts"]            # 2s, 4s, ...
-            self.col.update_one({"_id": job_id}, {"$set": {"status": "queued", "locked_by": None, "heartbeat_at": None,
-                                                          "run_after": now + timedelta(seconds=backoff), "error": error,
-                                                          "message": f"Retrying after error (attempt {job['attempts']} of {self.max_attempts})",
-                                                          "updated_at": now}})
-            return
-        self.col.update_one({"_id": job_id}, {"$set": {"status": "failed", "error": error, "message": "Failed", "updated_at": now,
-                                                      "finished_at": now, "expire_at": now + timedelta(days=self.ttl_days)}})
+            res = self.col.update_one(owned, {"$set": {"status": "queued", "locked_by": None, "heartbeat_at": None,
+                                                       "run_after": now + timedelta(seconds=backoff), "error": error,
+                                                       "message": f"Retrying after error (attempt {job['attempts']} of {self.max_attempts})",
+                                                       "updated_at": now}})
+            return "queued" if res.matched_count == 1 else None
+        res = self.col.update_one(owned, {"$set": {"status": "failed", "locked_by": None, "heartbeat_at": None,
+                                                   "error": error, "message": "Failed", "updated_at": now,
+                                                   "finished_at": now, "expire_at": now + timedelta(days=self.ttl_days)}})
+        return "failed" if res.matched_count == 1 else None
 
     def get(self, job_id: ObjectId) -> Optional[Dict[str, Any]]:
         return self.col.find_one({"_id": job_id})

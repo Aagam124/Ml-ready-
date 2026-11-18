@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
+from app.engine.utils import placeholder_mask
 from app.profiling.semantic import infer_semantic_type
 
 NUMERIC_TYPES = {"continuous", "count", "discrete"}
@@ -38,11 +39,13 @@ def _numeric_stats(values: pd.Series) -> Dict[str, Any]:
 
 
 def _column_profile(s: pd.Series, name: str, n_rows: int) -> Dict[str, Any]:
-    n_missing = int(s.isna().sum())
+    missing_mask = s.isna() | placeholder_mask(s)
+    n_missing = int(missing_mask.sum())
     n_nonnull = n_rows - n_missing
-    n_unique = int(s.nunique())
+    valid = s.loc[~missing_mask]
+    n_unique = int(valid.nunique())
     is_text = pd.api.types.is_string_dtype(s) or s.dtype == object
-    n_blank = int((s.dropna().astype(str).str.strip() == "").sum()) if is_text else 0
+    n_blank = int((s.astype("string").str.strip() == "").sum()) if is_text else 0
 
     sem = infer_semantic_type(s, name, n_unique=n_unique, n_nonnull=n_nonnull)
     flags = list(sem.flags)
@@ -88,10 +91,9 @@ def _column_profile(s: pd.Series, name: str, n_rows: int) -> Dict[str, Any]:
 def profile_dataframe(df: pd.DataFrame) -> Dict[str, Any]:
     n_rows, n_cols = df.shape
     cells = n_rows * n_cols
-    n_missing_cells = int(df.isna().sum().sum())
-    n_dupes = int(df.duplicated().sum())
-
     columns: List[Dict[str, Any]] = [_column_profile(df[c], str(c), n_rows) for c in df.columns]
+    n_missing_cells = int(sum(c["n_missing"] for c in columns))
+    n_dupes = int(df.duplicated().sum())
 
     summary: Dict[str, int] = {}
     for c in columns:

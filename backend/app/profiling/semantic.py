@@ -22,6 +22,8 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 
+from app.engine.utils import placeholder_mask
+
 SAMPLE_SIZE = 1000
 ID_TOKENS = {"id", "uuid", "guid", "pk", "key", "identifier"}
 
@@ -190,7 +192,7 @@ def infer_semantic_type(
     n_unique: Optional[int] = None,
     n_nonnull: Optional[int] = None,
 ) -> SemanticResult:
-    s = series.dropna()
+    s = series.loc[~placeholder_mask(series)].dropna()
     n_nonnull = len(s) if n_nonnull is None else n_nonnull
     if n_nonnull == 0:
         return SemanticResult("empty", 1.0, ["All values are missing."])

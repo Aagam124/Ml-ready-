@@ -41,13 +41,26 @@ def handle_analysis(database: Database, settings: Settings, job: Dict[str, Any],
     docs = [{"_id": ObjectId(), "analysis_id": aid, "workspace_id": analysis["workspace_id"], **f} for f in result["findings"]]
     if docs:
         database.findings.insert_many(docs)
-    database.analyses.update_one({"_id": aid}, {"$set": {
-        "status": "done", "score": result["score"], "summary": result["summary"], "fix_first": result["fix_first"],
+    status = result["analysis_status"]
+    updates = {
+        "status": status,
         "target_candidates": result["target_candidates"], "task_type": result["task_type"], "sampling": result["sampling"],
-        "check_timings_ms": result["check_timings_ms"], "check_errors": result["check_errors"], "checks_skipped": result["checks_skipped"],
+        "check_timings_ms": result["check_timings_ms"], "check_errors": result["check_errors"],
+        "checks_completed": result["checks_completed"], "checks_skipped": result["checks_skipped"],
         "leakage_columns": result["leakage_columns"], "n_findings": len(docs), "config_snapshot": result["config_snapshot"],
-        "duration_ms": round((time.perf_counter() - t0) * 1000), "finished_at": now(), "score_version": result["score_version"]}})
-    return {"analysis_id": str(aid), "score": result["score"]["value"]}
+        "duration_ms": round((time.perf_counter() - t0) * 1000), "finished_at": now(), "score_version": result["score_version"]}
+    unset = {}
+    if status == "failed":
+        updates["error"] = "No engine checks completed successfully."
+        unset.update({"score": "", "summary": "", "fix_first": ""})
+    else:
+        updates.update({"score": result["score"], "summary": result["summary"], "fix_first": result["fix_first"]})
+        unset["error"] = ""
+    database.analyses.update_one({"_id": aid}, {"$set": updates, "$unset": unset})
+    job_result = {"analysis_id": str(aid)}
+    if status != "failed":
+        job_result["score"] = result["score"]["value"]
+    return job_result
 
 
 def handle_apply_plan(database: Database, settings: Settings, job: Dict[str, Any], progress: Progress) -> Dict[str, Any]:
@@ -73,7 +86,12 @@ def handle_apply_plan(database: Database, settings: Settings, job: Dict[str, Any
     database.analyses.insert_one(new_analysis)
     from app.jobs.queue import MongoJobQueue
     q = MongoJobQueue(database, settings.job_max_attempts, settings.job_stale_seconds, settings.job_ttl_days)
-    jid = q.enqueue("analysis", {"analysis_id": str(new_analysis["_id"]), "dataset_id": str(dataset["_id"])}, plan["workspace_id"])
+    try:
+        jid = q.enqueue("analysis", {"analysis_id": str(new_analysis["_id"]), "dataset_id": str(dataset["_id"])}, plan["workspace_id"])
+    except Exception as e:
+        database.analyses.update_one({"_id": new_analysis["_id"]}, {"$set": {
+            "status": "failed", "error": f"{type(e).__name__}: {e}"[:500], "finished_at": now()}})
+        raise
     database.analyses.update_one({"_id": new_analysis["_id"]}, {"$set": {"job_id": jid}})
     database.plans.update_one({"_id": pid}, {"$set": {"status": "applied", "result_version_id": ver["_id"], "apply_report": report,
                                                      "result_analysis_id": new_analysis["_id"], "applied_at": now()}})
@@ -108,4 +126,4 @@ def mark_target_failed(database: Database, job: Dict[str, Any], error: str) -> N
     p = job.get("payload", {})
     for key, col in (("analysis_id", database.analyses), ("plan_id", database.plans), ("model_run_id", database.model_runs)):
         if key in p:
-            col.update_one({"_id": ObjectId(p[key])}, {"$set": {"status": "failed", "error": error[:500]}})
+            col.update_one({"_id": ObjectId(p[key])}, {"$set": {"status": "failed", "error": error[:500], "finished_at": now()}})

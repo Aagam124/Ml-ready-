@@ -23,7 +23,7 @@ export interface Score {
 }
 export interface FixFirst { code: string; columns: string[]; points_gain: number; effort: string; headline: string; fix: Fix }
 export interface Analysis {
-  id: string; dataset_id: string; version_id: string; status: "queued" | "running" | "done" | "failed"; target_column: string | null;
+  id: string; dataset_id: string; version_id: string; status: "queued" | "running" | "partial" | "done" | "failed"; target_column: string | null;
   task_type: string | null; score?: Score; summary?: { headline: string; notes: string[]; counts: Record<string, number>; top_fixes: string[] };
   fix_first?: FixFirst[]; sampling?: { sampled: boolean; n_rows_original: number; n_rows_analysed: number }; error?: string; job_id?: string;
   check_errors?: { check: string; error: string }[];

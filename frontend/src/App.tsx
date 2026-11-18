@@ -14,8 +14,8 @@ import { Verdict } from "./screens/Verdict";
 const STEPS: { id: Screen; label: string; needs: (f: Flow) => boolean }[] = [
   { id: "landing", label: "Data", needs: () => true },
   { id: "target", label: "Target", needs: (f) => !!f.dataset },
-  { id: "verdict", label: "Verdict", needs: (f) => f.analysis?.status === "done" },
-  { id: "findings", label: "Findings", needs: (f) => f.analysis?.status === "done" },
+  { id: "verdict", label: "Verdict", needs: (f) => f.analysis?.status === "done" || f.analysis?.status === "partial" || f.analysis?.status === "failed" },
+  { id: "findings", label: "Findings", needs: (f) => f.analysis?.status === "done" || f.analysis?.status === "partial" },
   { id: "plan", label: "Cleaning plan", needs: (f) => f.analysis?.status === "done" },
   { id: "results", label: "Before / after", needs: (f) => !!f.plan },
   { id: "export", label: "Export", needs: (f) => f.analysis?.status === "done" },

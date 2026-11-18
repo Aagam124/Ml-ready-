@@ -24,6 +24,13 @@ export function Findings({ flow }: ScreenProps) {
     <>
       <h1 style={{ fontSize: "1.9rem" }}>Findings</h1>
       <p className="muted">Each one is a single problem with its evidence. Technical detail is one click away.</p>
+      {a.status === "partial" && (
+        <div className="callout danger" role="alert">
+          <strong>Partial findings — check coverage is incomplete.</strong>
+          <p>These findings are available, but failed checks may have found additional issues.</p>
+          {a.check_errors?.map((e) => <p key={e.check}><b>{e.check}:</b> {e.error}</p>)}
+        </div>
+      )}
       <div className="row" role="group" aria-label="Filter by severity">
         {SEVS.map((s) => <button key={s} className="chip" aria-pressed={sev.has(s)} onClick={() => toggle(s)}>{s}{items ? ` (${items.filter((f) => f.severity === s).length})` : ""}</button>)}
         <select aria-label="Category" value={cat} onChange={(e) => setCat(e.target.value)} style={{ width: "auto" }}>

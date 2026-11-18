@@ -15,7 +15,8 @@ from app.engine.checks.association import (category_purity, linear_strength, mut
 from app.engine.context import AnalysisContext
 from app.engine.findings import Finding, fix
 from app.engine.registry import Check, register
-from app.engine.utils import association, numeric_view, pct, ratio_text, safe_sample, tokens, ID_TOKENS_FOR_NAMES
+from app.engine.utils import (association, numeric_view, pct, placeholder_mask, ratio_text,
+                              safe_sample, tokens, ID_TOKENS_FOR_NAMES)
 
 NUMERIC_SEM = ("continuous", "count", "discrete", "currency", "percentage")
 LEAK_HINTS = {"leak", "leaked", "leakage", "outcome", "result", "actual", "prediction", "predicted", "label", "target"}
@@ -41,9 +42,7 @@ class TargetQualityCheck(Check):
         t, y = ctx.target, df[ctx.target]
         n = len(df)
         out: List[Finding] = []
-        miss = y.isna()
-        if ctx.is_classification or ctx.task_type == "regression":
-            miss = miss | (y.astype("string").str.strip() == "").fillna(False)
+        miss = y.isna() | placeholder_mask(y)
         k = int(miss.sum())
         if k:
             share = pct(k, n)
@@ -76,7 +75,7 @@ class ClassImbalanceCheck(Check):
         return ctx.has_target and ctx.is_classification
 
     def run(self, df, ctx: AnalysisContext) -> List[Finding]:
-        y = df[ctx.target].dropna()
+        y = df[ctx.target].loc[~placeholder_mask(df[ctx.target])].dropna()
         counts = y.value_counts()
         if len(counts) < 2:
             return []

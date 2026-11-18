@@ -36,7 +36,7 @@ def generate(analysis_id: str, body: ReportRequest, database: Database = Depends
         raise APIError(422, "bad_format", "format must be 'html' or 'pdf'.")
     a = get_analysis(database, ws, analysis_id)
     if a["status"] != "done":
-        raise APIError(409, "analysis_not_ready", "Wait for the analysis to finish.")
+        raise APIError(409, "analysis_not_ready", "A complete analysis with full check coverage is required before creating a report.")
     ds = database.datasets.find_one({"_id": a["dataset_id"], "workspace_id": ws["_id"]})
     findings = [{k: v for k, v in f.items() if k != "_id"} for f in database.findings.find({"analysis_id": a["_id"], "workspace_id": ws["_id"]})]
     order = ["critical", "high", "medium", "low", "info"]

@@ -14,6 +14,7 @@ import time
 import traceback
 import uuid
 from datetime import datetime, timezone
+from typing import Any, Dict
 
 from app.config import Settings, get_settings
 from app.db import Database, build_database, ensure_indexes
@@ -35,9 +36,12 @@ class Worker:
         job = self.queue.claim(self.id)
         if job is None:
             return False
+        if job["attempts"] > self.queue.max_attempts:
+            self._fail_job(job, "Gave up after repeated worker failures.", final=True)
+            return True
         handler = HANDLERS.get(job["type"])
         if handler is None:
-            self.queue.fail(job["_id"], f"Unknown job type '{job['type']}'", final=True)
+            self._fail_job(job, f"Unknown job type '{job['type']}'", final=True)
             return True
         lost = threading.Event()
         last = {"t": 0.0}
@@ -65,18 +69,22 @@ class Worker:
             log.info("job %s type=%s attempt=%s", job["_id"], job["type"], job["attempts"])
             result = handler(self.db, self.settings, job, progress)
             if not lost.is_set():
-                self.queue.complete(job["_id"], result)
+                if not self.queue.complete(job["_id"], self.id, result):
+                    lost.set()
+                    log.warning("job %s completion ignored because this worker no longer owns it", job["_id"])
         except Exception as e:       # noqa: BLE001 - the job record carries the error; never crash the worker
             err = f"{type(e).__name__}: {e}"
             log.error("job %s failed: %s\n%s", job["_id"], err, traceback.format_exc())
             if not lost.is_set():
-                self.queue.fail(job["_id"], err)
-                after = self.queue.get(job["_id"])
-                if after and after["status"] == "failed":
-                    mark_target_failed(self.db, job, err)
+                self._fail_job(job, err)
         finally:
             beat_stop.set()
         return True
+
+    def _fail_job(self, job: Dict[str, Any], error: str, final: bool = False) -> None:
+        status = self.queue.fail(job["_id"], self.id, error, final=final)
+        if status == "failed":
+            mark_target_failed(self.db, job, error)
 
     def janitor(self) -> None:
         """Delete expired demo (guest) workspaces with all their data, every 10 minutes."""

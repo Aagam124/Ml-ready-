@@ -69,6 +69,13 @@ export function Plan({ flow, setFlow, go }: ScreenProps) {
       <h1 style={{ fontSize: "1.9rem" }}>Cleaning plan</h1>
       <p className="muted">Each step fixes one finding. Preview it on a sample, switch it off if you disagree, then apply. Your original file is never changed; applying creates a new version you can undo.</p>
       {error !== null && <ErrorBox error={error} />}
+      {after && after.status !== "done" && (
+        <div className={`callout ${after.status === "failed" ? "danger" : "warn"}`} role={after.status === "failed" ? "alert" : "status"}>
+          <strong>{after.status === "partial" ? "Follow-up analysis is partial." : "Follow-up analysis failed."}</strong>
+          <p>{after.error ?? "Check coverage is incomplete; the resulting score is not fully validated."}</p>
+          {after.check_errors?.map((e) => <p key={e.check}><b>{e.check}:</b> {e.error}</p>)}
+        </div>
+      )}
       {applied && after?.score && analysis.score && (
         <div className="callout good" role="status"><strong>Applied.</strong> Readiness score {analysis.score.value.toFixed(0)} → <strong>{after.score.value.toFixed(0)}</strong> ({after.score.band}).
           <div className="row" style={{ marginTop: 8 }}><button className="btn primary" onClick={() => go("results")}>Measure the effect on real models</button><button className="btn" onClick={() => void undo()}>Undo (go back to the previous version)</button></div></div>)}

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from app.engine.utils import tokens
+from app.engine.utils import placeholder_mask, tokens
 
 TARGET_NAME_HINTS = {
     "churn", "churned", "label", "target", "outcome", "y", "class", "default", "defaulted", "fraud",
@@ -18,7 +18,7 @@ MAX_CLASSES = 20
 
 def task_type_for(series: pd.Series, semantic: str) -> Optional[str]:
     """binary / multiclass / regression for a column, or None when it cannot be a target."""
-    s = series.dropna()
+    s = series.loc[~placeholder_mask(series)].dropna()
     if s.empty or semantic in NEVER_TARGET:
         return None
     n_unique = s.nunique()

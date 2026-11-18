@@ -45,6 +45,14 @@ def effective_missing(s: pd.Series) -> pd.Series:
     return m
 
 
+def placeholder_mask(s: pd.Series) -> pd.Series:
+    """True where a value is a missing-value placeholder using the project’s canonical semantics."""
+    text = s.astype("string")
+    stripped = text.str.strip()
+    lowered = stripped.str.lower()
+    return lowered.isna() | (stripped == "") | lowered.isin(PLACEHOLDERS)
+
+
 def pct(part: float, whole: float) -> float:
     return round(part / whole * 100, 2) if whole else 0.0
 

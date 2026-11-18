@@ -51,7 +51,7 @@ def get_plan(database: Database, ws: dict, plan_id: str) -> dict:
 def propose(analysis_id: str, database: Database = Depends(get_database), ws: dict = Depends(editor_workspace)):
     a = get_analysis(database, ws, analysis_id)
     if a["status"] != "done":
-        raise APIError(409, "analysis_not_ready", "Wait for the analysis to finish before building a plan.")
+        raise APIError(409, "analysis_not_ready", "A complete analysis with full check coverage is required before building a plan.")
     ver = database.versions.find_one({"_id": a["version_id"], "workspace_id": ws["_id"]})
     findings = list(database.findings.find({"analysis_id": a["_id"], "workspace_id": ws["_id"]}))
     plan_doc = propose_plan([{k: v for k, v in f.items() if k != "_id"} for f in findings], ver["profile"], a.get("target_column"))

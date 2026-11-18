@@ -13,6 +13,7 @@ from app.engine.findings import Finding
 from app.engine.registry import ordered_checks
 from app.engine.scoring import SCORE_VERSION, fix_first, score_findings
 from app.engine.target import suggest_targets, task_type_for
+from app.engine.utils import placeholder_mask
 from app.profiling.profile import profile_dataframe
 
 # Codes that may legitimately name the target column. Everything else is a feature finding.
@@ -54,9 +55,11 @@ def run_analysis(df: pd.DataFrame, target: Optional[str] = None, task_type: Opti
     if target is not None and target not in work.columns:
         raise ValueError(f"Target column '{target}' not found.")
     if target is not None and task_type is None:
-        task_type = task_type_for(work[target], next(c["semantic_type"] for c in prof["columns"] if c["name"] == target))
-        if task_type is None:
-            raise ValueError(f"Column '{target}' cannot be used as a target (type unsuitable).")
+        target_series = work[target]
+        if not (target_series.isna() | placeholder_mask(target_series)).all():
+            task_type = task_type_for(target_series, next(c["semantic_type"] for c in prof["columns"] if c["name"] == target))
+            if task_type is None:
+                raise ValueError(f"Column '{target}' cannot be used as a target (type unsuitable).")
     ctx = AnalysisContext(df=work, target=target, task_type=task_type if target else None, profile=prof, config=cfg,
                           n_rows_original=n_original, sampled=sampled, test_df=test_df)
 
@@ -65,21 +68,25 @@ def run_analysis(df: pd.DataFrame, target: Optional[str] = None, task_type: Opti
     timings: Dict[str, int] = {}
     errors: List[Dict[str, str]] = []
     skipped: List[str] = []
+    completed: List[str] = []
     for i, check in enumerate(checks):
         if progress:
             progress(i / len(checks), f"Running {check.id}")
-        if not check.applies_to(ctx):
-            skipped.append(check.id)
-            continue
         t0 = time.perf_counter()
         try:
+            if not check.applies_to(ctx):
+                skipped.append(check.id)
+                continue
             res = check.run(work, ctx)
             for f in res:
                 f.check_id = check.id
             findings.extend(res)
+            completed.append(check.id)
         except Exception as e:   # one broken check must not hide the rest; the failure is reported
             errors.append({"check": check.id, "error": f"{type(e).__name__}: {e}"})
-        timings[check.id] = round((time.perf_counter() - t0) * 1000)
+        finally:
+            if check.id not in skipped:
+                timings[check.id] = round((time.perf_counter() - t0) * 1000)
 
     # Guard: a feature finding must never be raised on the target column.
     kept = []
@@ -94,9 +101,17 @@ def run_analysis(df: pd.DataFrame, target: Optional[str] = None, task_type: Opti
     score = score_findings(findings, provisional=provisional)
     top = fix_first(findings)
     summary = build_summary(work, ctx, findings, score, top, candidates)
+    analysis_status = "done"
+    if errors:
+        analysis_status = "partial" if completed else "failed"
+        detail = f"{len(errors)} check(s) could not run."
+        score["ml_readiness"] = "Incomplete validation" if completed else "Unavailable"
+        summary["headline"] = "Incomplete analysis: check coverage is not complete."
+        summary["notes"].insert(0, f"{detail} Do not treat this score as a fully validated readiness result.")
     if progress:
         progress(1.0, "Done")
     return {
+        "analysis_status": analysis_status, "checks_completed": completed,
         "target_column": target, "task_type": ctx.task_type, "target_candidates": candidates,
         "findings": [f.to_dict() for f in findings], "score": score, "fix_first": top, "summary": summary,
         "leakage_columns": ctx.shared.get("leakage_likely", []),

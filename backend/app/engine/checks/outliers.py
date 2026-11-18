@@ -13,6 +13,7 @@ from app.engine.registry import Check, register
 from app.engine.utils import numeric_view, pct, ratio_text
 
 NUMERIC = ("continuous", "count", "discrete", "currency", "percentage")
+SKEW_LOG_TRANSFORM_THRESHOLD = 1.0
 
 
 @register
@@ -42,7 +43,7 @@ class OutliersCheck(Check):
             nn = v.dropna()
             if len(nn) < 15 or nn.nunique() < 5:
                 continue
-            work = np.log1p(nn) if (nn.min() > 0 and abs(nn.skew()) > 1.5) else nn
+            work = np.log1p(nn) if (nn.min() > 0 and abs(nn.skew()) >= SKEW_LOG_TRANSFORM_THRESHOLD) else nn
             log_scale = work is not nn
             q1, q3 = work.quantile(0.25), work.quantile(0.75)
             iqr = q3 - q1
@@ -64,7 +65,11 @@ class OutliersCheck(Check):
             if rate > 10 and n_ext == 0:      # heavy-tailed distribution without extreme 3x-IQR stray points
                 continue
             covered.loc[flagged[flagged].index] = True
-            sev = "medium" if (rate >= 5 or n_ext > 0) else "low"
+            positively_skewed = nn.min() > 0 and nn.skew() > 0.75
+            if positively_skewed and rate < 5 and n_ext <= 2:
+                sev = "low"
+            else:
+                sev = "medium" if (rate >= 5 or n_ext > 0) else "low"
             out.append(Finding(
                 code="outliers", category="outliers", severity=sev,
                 confidence="high" if (agree.sum() and n_if) else "medium", columns=[c],

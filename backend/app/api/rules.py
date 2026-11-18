@@ -125,7 +125,7 @@ def run_quality_checks(dataset_id: str, version_id: Optional[str] = None, ws: di
 
 @router.get("/benchmarks/evaluation-suite")
 def get_evaluation_metrics(seeds: int = 5, ws: dict = Depends(get_workspace)):
-    """Runs the verified empirical accuracy evaluation suite (target >= 90% precision & recall)."""
+    """Runs the synthetic detection-quality suite; results are not real-world accuracy estimates."""
     suite = EvaluationSuite(seeds=min(max(1, seeds), 10), sample_size=1000)
     return suite.run_evaluations()
 
