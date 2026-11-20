@@ -7,9 +7,12 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import analyses, auth, cleaning, datasets, jobs, models, reports, rules, workspaces
 from app.config import get_settings
@@ -71,10 +74,6 @@ def create_app() -> FastAPI:
     for r in (auth.router, datasets.router, analyses.router, cleaning.router, models.router, jobs.router, reports.router, rules.router, workspaces.router):
         app.include_router(r, prefix="/api/v1")
 
-    @app.get("/", include_in_schema=False)
-    def root():
-        return RedirectResponse(url="/docs")
-
     @app.get("/api/v1/version", tags=["ops"])
     def version():
         from app.engine.config import ENGINE_VERSION
@@ -103,6 +102,31 @@ def create_app() -> FastAPI:
         except Exception:
             raise APIError(503, "db_unavailable", "MongoDB is not reachable.")
         return {"status": "ready"}
+
+    # Serve built frontend SPA if available (e.g. in Docker or production build)
+    static_dirs = [
+        Path("/srv/static"),
+        Path(__file__).resolve().parent.parent / "static",
+        Path(__file__).resolve().parent.parent.parent / "frontend" / "dist",
+    ]
+    static_dir = next((d for d in static_dirs if d.is_dir() and (d / "index.html").exists()), None)
+    if static_dir:
+        assets_dir = static_dir / "assets"
+        if assets_dir.is_dir():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str):
+            if full_path.startswith("api/") or full_path in ("docs", "redoc", "openapi.json", "ready", "health", "metrics"):
+                raise HTTPException(status_code=404, detail="Not Found")
+            target = static_dir / full_path
+            if target.is_file():
+                return FileResponse(str(target))
+            return FileResponse(str(static_dir / "index.html"))
+    else:
+        @app.get("/", include_in_schema=False)
+        def root():
+            return RedirectResponse(url="/docs")
 
     return app
 
