@@ -3,7 +3,13 @@ import type { Job } from "./types";
 export function getBaseUrl(): string {
   const custom = typeof window !== "undefined" ? localStorage.getItem("mlready.api_url") : null;
   if (custom) return custom.replace(/\/+$/, "") + "/api/v1";
-  if (import.meta.env.VITE_API_URL) return String(import.meta.env.VITE_API_URL).replace(/\/+$/, "") + "/api/v1";
+  if (import.meta.env.VITE_API_URL) {
+    let url = String(import.meta.env.VITE_API_URL).trim();
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      url = "https://" + url;
+    }
+    return url.replace(/\/+$/, "") + "/api/v1";
+  }
   return "/api/v1";
 }
 

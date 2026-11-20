@@ -48,16 +48,23 @@ def free_port(port: int):
     if sys.platform != "win32":
         return
     try:
-        out = subprocess.check_output(f'netstat -ano | findstr ":{port} "', shell=True, text=True)
-        for line in out.strip().splitlines():
-            parts = line.split()
-            if len(parts) >= 5 and "LISTENING" in parts[3].upper():
-                pid = int(parts[-1])
-                if pid > 0 and pid != os.getpid():
-                    print(f"{YELLOW}[*] Freeing occupied port {port} (stopping PID {pid})...{RESET}")
-                    subprocess.run(["taskkill", "/F", "/PID", str(pid)],
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    time.sleep(1)
+        res = subprocess.run(["netstat", "-ano"], capture_output=True, text=True)
+        killed = set()
+        for line in res.stdout.splitlines():
+            parts = line.strip().split()
+            if len(parts) >= 5 and parts[0].upper() == "TCP" and parts[3].upper() == "LISTENING":
+                local_addr = parts[1]
+                if local_addr.endswith(f":{port}"):
+                    try:
+                        pid = int(parts[-1])
+                    except ValueError:
+                        continue
+                    if pid > 0 and pid != os.getpid() and pid not in killed:
+                        killed.add(pid)
+                        print(f"{YELLOW}[*] Freeing occupied port {port} (stopping PID {pid})...{RESET}")
+                        subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
+                                       capture_output=True)
+                        time.sleep(1)
     except Exception:
         pass
 
@@ -93,9 +100,10 @@ def main():
     print(f"{BOLD}{CYAN}         Starting MLReady SaaS Platform            {RESET}")
     print(f"{BOLD}{CYAN}===================================================={RESET}\n")
 
-    # 0. Clean ports 8000 and 5173 if leftover
+    # 0. Clean ports 8000 and 5173/5174 if leftover
     free_port(8000)
     free_port(5173)
+    free_port(5174)
 
     # 1. MongoDB check
     print(f"[*] Checking MongoDB on port 27017... ", end="", flush=True)

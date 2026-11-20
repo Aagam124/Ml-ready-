@@ -45,8 +45,14 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="MLReady API", version=APP_VERSION, lifespan=lifespan,
                   description="MLReady: tells you whether a dataset is ready for machine learning, why not, how to fix it, and proves the fix worked.")
-    app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
-                       allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_origin_regex=r"https://.*\.onrender\.com",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     install_error_handlers(app)
 
     @app.middleware("http")
