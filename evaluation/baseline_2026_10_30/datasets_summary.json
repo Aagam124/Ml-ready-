@@ -1,0 +1,917 @@
+{
+  "datasets": [
+    {
+      "dataset_name": "clean_binary_seed0",
+      "source": "app.benchmark.make_clean",
+      "rows": 1500,
+      "cols": 13,
+      "target": "churned",
+      "score_value": 91.19,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 1911,
+      "description": "clean synthetic benchmark dataset"
+    },
+    {
+      "dataset_name": "clean_binary_seed1",
+      "source": "app.benchmark.make_clean",
+      "rows": 1500,
+      "cols": 13,
+      "target": "churned",
+      "score_value": 91.19,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 1704,
+      "description": "clean synthetic benchmark dataset"
+    },
+    {
+      "dataset_name": "clean_binary_seed2",
+      "source": "app.benchmark.make_clean",
+      "rows": 1500,
+      "cols": 13,
+      "target": "churned",
+      "score_value": 95.02,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 2264,
+      "description": "clean synthetic benchmark dataset"
+    },
+    {
+      "dataset_name": "clean_multiclass_seed0",
+      "source": "app.benchmark.make_clean",
+      "rows": 1500,
+      "cols": 13,
+      "target": "segment",
+      "score_value": 91.19,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 2728,
+      "description": "clean synthetic benchmark dataset"
+    },
+    {
+      "dataset_name": "clean_multiclass_seed1",
+      "source": "app.benchmark.make_clean",
+      "rows": 1500,
+      "cols": 13,
+      "target": "segment",
+      "score_value": 91.19,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 1802,
+      "description": "clean synthetic benchmark dataset"
+    },
+    {
+      "dataset_name": "clean_multiclass_seed2",
+      "source": "app.benchmark.make_clean",
+      "rows": 1500,
+      "cols": 13,
+      "target": "segment",
+      "score_value": 95.02,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 1749,
+      "description": "clean synthetic benchmark dataset"
+    },
+    {
+      "dataset_name": "clean_regression_seed0",
+      "source": "app.benchmark.make_clean",
+      "rows": 1500,
+      "cols": 13,
+      "target": "spend",
+      "score_value": 91.19,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 1886,
+      "description": "clean synthetic benchmark dataset"
+    },
+    {
+      "dataset_name": "clean_regression_seed1",
+      "source": "app.benchmark.make_clean",
+      "rows": 1500,
+      "cols": 13,
+      "target": "spend",
+      "score_value": 91.19,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 1677,
+      "description": "clean synthetic benchmark dataset"
+    },
+    {
+      "dataset_name": "clean_regression_seed2",
+      "source": "app.benchmark.make_clean",
+      "rows": 1500,
+      "cols": 13,
+      "target": "spend",
+      "score_value": 95.02,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 1970,
+      "description": "clean synthetic benchmark dataset"
+    },
+    {
+      "dataset_name": "planted_missingness",
+      "source": "app.benchmark.make_planted",
+      "rows": 1500,
+      "cols": 14,
+      "target": "churned",
+      "expected_code": "missing_values",
+      "expected_column": "salary",
+      "found": true,
+      "score_value": 93.97,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 2,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "identifier_feature",
+        "missing_values",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 2353,
+      "description": "benchmark dataset with planted missingness defect"
+    },
+    {
+      "dataset_name": "planted_duplicates",
+      "source": "app.benchmark.make_planted",
+      "rows": 1575,
+      "cols": 13,
+      "target": "churned",
+      "expected_code": "exact_duplicates",
+      "expected_column": null,
+      "found": true,
+      "score_value": 92.69,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 0,
+        "info": 1
+      },
+      "finding_codes": [
+        "exact_duplicates",
+        "outliers",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 1454,
+      "description": "benchmark dataset with planted duplicates defect"
+    },
+    {
+      "dataset_name": "planted_leakage",
+      "source": "app.benchmark.make_planted",
+      "rows": 1500,
+      "cols": 14,
+      "target": "churned",
+      "expected_code": "target_leakage",
+      "expected_column": "post_outcome_score",
+      "found": true,
+      "score_value": 40.0,
+      "band": "Poor",
+      "severities": {
+        "critical": 1,
+        "high": 0,
+        "medium": 1,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "target_leakage",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 1838,
+      "description": "benchmark dataset with planted leakage defect"
+    },
+    {
+      "dataset_name": "planted_inconsistent_categories",
+      "source": "app.benchmark.make_planted",
+      "rows": 1500,
+      "cols": 14,
+      "target": "churned",
+      "expected_code": "inconsistent_categories",
+      "expected_column": "gender",
+      "found": true,
+      "score_value": 91.33,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 2
+      },
+      "finding_codes": [
+        "inconsistent_categories",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 2320,
+      "description": "benchmark dataset with planted inconsistent_categories defect"
+    },
+    {
+      "dataset_name": "planted_negative_salary",
+      "source": "app.benchmark.make_planted",
+      "rows": 1500,
+      "cols": 14,
+      "target": "churned",
+      "expected_code": "invalid_values",
+      "expected_column": "salary",
+      "found": true,
+      "score_value": 87.56,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 1,
+        "medium": 1,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "invalid_values",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 2083,
+      "description": "benchmark dataset with planted negative_salary defect"
+    },
+    {
+      "dataset_name": "planted_disguised_missing",
+      "source": "app.benchmark.make_planted",
+      "rows": 1500,
+      "cols": 13,
+      "target": "churned",
+      "expected_code": "disguised_missing_values",
+      "expected_column": "monthly_usage",
+      "found": true,
+      "score_value": 91.19,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "disguised_missing_values",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 2390,
+      "description": "benchmark dataset with planted disguised_missing defect"
+    },
+    {
+      "dataset_name": "planted_constant_column",
+      "source": "app.benchmark.make_planted",
+      "rows": 1500,
+      "cols": 14,
+      "target": "churned",
+      "expected_code": "constant_column",
+      "expected_column": "country",
+      "found": true,
+      "score_value": 93.97,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 2,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "constant_column",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 2188,
+      "description": "benchmark dataset with planted constant_column defect"
+    },
+    {
+      "dataset_name": "planted_imbalance",
+      "source": "app.benchmark.make_planted",
+      "rows": 1016,
+      "cols": 13,
+      "target": "churned",
+      "expected_code": "class_imbalance",
+      "expected_column": "churned",
+      "found": true,
+      "score_value": 79.19,
+      "band": "Good",
+      "severities": {
+        "critical": 0,
+        "high": 1,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "class_imbalance",
+        "outliers",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 2236,
+      "description": "benchmark dataset with planted imbalance defect"
+    },
+    {
+      "dataset_name": "planted_impossible_age",
+      "source": "app.benchmark.make_planted",
+      "rows": 1500,
+      "cols": 14,
+      "target": "churned",
+      "expected_code": "invalid_values",
+      "expected_column": "age",
+      "found": true,
+      "score_value": 87.56,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 1,
+        "medium": 1,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "invalid_values",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 2277,
+      "description": "benchmark dataset with planted impossible_age defect"
+    },
+    {
+      "dataset_name": "planted_redundant_columns",
+      "source": "app.benchmark.make_planted",
+      "rows": 1500,
+      "cols": 14,
+      "target": "churned",
+      "expected_code": "redundant_columns",
+      "expected_column": "tenure_months",
+      "found": true,
+      "score_value": 90.56,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "redundant_columns",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 3219,
+      "description": "benchmark dataset with planted redundant_columns defect"
+    },
+    {
+      "dataset_name": "outliers_feature_a",
+      "source": "synthetic mutation of app.benchmark.make_clean",
+      "rows": 800,
+      "cols": 13,
+      "target": "churned",
+      "score_value": 91.19,
+      "band": "Excellent",
+      "severities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
+      "finding_codes": [
+        "outliers",
+        "outliers",
+        "identifier_feature",
+        "sensitive_attribute"
+      ],
+      "check_errors": [],
+      "duration_ms": 3383,
+      "description": "clean dataset with extreme outlier injection"
+    }
+  ],
+  "api_demo_analysis": {
+    "id": "6ae3d29e921854417c9bdcd2",
+    "workspace_id": "6ae3d29c921854417c9bdccb",
+    "dataset_id": "6ae3d29e921854417c9bdcd0",
+    "version_id": "6ae3d29e921854417c9bdcd1",
+    "target_column": "churned",
+    "task_type": "binary",
+    "config": {
+      "seed": 42,
+      "sample_threshold": 200000,
+      "ml_check_max_rows": 20000,
+      "as_of": "2026-10-30",
+      "missing_min_pct": 0.0,
+      "max_categorical_cardinality_for_groups": 200,
+      "outlier_min_rate_pct": 1.0,
+      "multivariate_contamination": 0.02,
+      "leakage_model_auc": 0.95,
+      "leakage_corr": 0.85,
+      "leakage_mi": 0.7,
+      "vif_threshold": 10.0,
+      "redundant_corr": 0.999,
+      "collinear_corr": 0.95,
+      "approved_replacement_categories": [
+        "Unknown",
+        "unknown",
+        "Other",
+        "other",
+        "N/A",
+        "n/a",
+        "Unspecified",
+        "Missing"
+      ],
+      "allowed_categories": {},
+      "engine_version": "1.0.0"
+    },
+    "status": "done",
+    "created_at": "2026-10-29T23:11:26.205000",
+    "created_by": null,
+    "job_id": "6ae3d29e921854417c9bdcd3",
+    "score": {
+      "value": 40.0,
+      "band": "Poor",
+      "provisional": false,
+      "version": "1.0",
+      "data_quality_score": 89.0,
+      "ml_readiness": "Not Ready - Critical Leakage",
+      "unresolved_critical": 1,
+      "unresolved_high": 1,
+      "validation_checks": {
+        "missing_values": "Passed",
+        "target_column": "Passed",
+        "data_leakage": "Failed",
+        "category_validity": "Passed",
+        "duplicate_records": "Review needed",
+        "outlier_observations": "Review needed"
+      },
+      "deductions": [
+        {
+          "code": "target_leakage",
+          "columns": [
+            "churn_score_leak"
+          ],
+          "category": "leakage",
+          "severity": "critical",
+          "confidence": "high",
+          "points": 21.6
+        },
+        {
+          "code": "invalid_values",
+          "columns": [
+            "salary"
+          ],
+          "category": "quality",
+          "severity": "high",
+          "confidence": "high",
+          "points": 8.0
+        },
+        {
+          "code": "class_imbalance",
+          "columns": [
+            "churned"
+          ],
+          "category": "ml_risk",
+          "severity": "medium",
+          "confidence": "high",
+          "points": 6.0
+        },
+        {
+          "code": "redundant_columns",
+          "columns": [
+            "tenure_months",
+            "tenure_years"
+          ],
+          "category": "ml_risk",
+          "severity": "medium",
+          "confidence": "high",
+          "points": 5.0
+        },
+        {
+          "code": "invalid_values",
+          "columns": [
+            "age"
+          ],
+          "category": "quality",
+          "severity": "medium",
+          "confidence": "high",
+          "points": 4.0
+        },
+        {
+          "code": "exact_duplicates",
+          "columns": [],
+          "category": "quality",
+          "severity": "medium",
+          "confidence": "high",
+          "points": 3.3
+        },
+        {
+          "code": "constant_column",
+          "columns": [
+            "country"
+          ],
+          "category": "quality",
+          "severity": "low",
+          "confidence": "high",
+          "points": 1.2
+        },
+        {
+          "code": "identifier_feature",
+          "columns": [
+            "customer_id"
+          ],
+          "category": "ml_risk",
+          "severity": "low",
+          "confidence": "high",
+          "points": 1.2
+        },
+        {
+          "code": "missing_values",
+          "columns": [
+            "age"
+          ],
+          "category": "quality",
+          "severity": "low",
+          "confidence": "high",
+          "points": 1.2
+        },
+        {
+          "code": "missing_values",
+          "columns": [
+            "salary"
+          ],
+          "category": "quality",
+          "severity": "low",
+          "confidence": "high",
+          "points": 1.2
+        },
+        {
+          "code": "multivariate_outliers",
+          "columns": [],
+          "category": "outliers",
+          "severity": "low",
+          "confidence": "low",
+          "points": 0.48
+        }
+      ],
+      "total_deducted": 53.18,
+      "dimensions": {
+        "completeness": 94.0,
+        "validity": 70.0,
+        "consistency": 100.0,
+        "uniqueness": 91.8,
+        "model_readiness": 11.3
+      },
+      "category_totals": {
+        "quality": 18.9,
+        "outliers": 0.48,
+        "leakage": 21.6,
+        "ml_risk": 12.2
+      }
+    },
+    "summary": {
+      "headline": "Not ready: Critical target leakage detected in 'churn_score_leak'. Models will fail in production.",
+      "score": 40.0,
+      "data_quality_score": 89.0,
+      "ml_readiness": "Not Ready - Critical Leakage",
+      "band": "Poor",
+      "provisional": false,
+      "counts": {
+        "critical": 1,
+        "high": 1,
+        "medium": 4,
+        "low": 5,
+        "info": 1
+      },
+      "notes": [
+        "Target leakage in ['churn_score_leak']: feature strongly reveals the target outcome."
+      ],
+      "unresolved_critical": 1,
+      "unresolved_high": 1,
+      "outlier_status": "1 feature(s) contain statistical outliers (review recommended before clipping)",
+      "validation_checks": {
+        "missing_values": "Passed",
+        "target_column": "Passed",
+        "data_leakage": "Failed",
+        "category_validity": "Passed",
+        "duplicate_records": "Review needed",
+        "outlier_observations": "Review needed"
+      },
+      "top_fixes": [
+        "'churn_score_leak' almost perfectly gives away the answer 'churned'.",
+        "'salary' has 6 of 737 non-missing values (0.81%) that are negative.",
+        "Your target is 11:1 imbalanced (8.61% of 825 rows are '1')."
+      ]
+    },
+    "fix_first": [
+      {
+        "code": "target_leakage",
+        "columns": [
+          "churn_score_leak"
+        ],
+        "points_gain": 21.6,
+        "effort": "low",
+        "headline": "'churn_score_leak' almost perfectly gives away the answer 'churned'.",
+        "fix": {
+          "fix_id": "drop_leak",
+          "label": "Drop 'churn_score_leak' (not available at prediction time)",
+          "op": "drop_columns",
+          "columns": [
+            "churn_score_leak"
+          ],
+          "params": {}
+        }
+      },
+      {
+        "code": "invalid_values",
+        "columns": [
+          "salary"
+        ],
+        "points_gain": 8.0,
+        "effort": "low",
+        "headline": "'salary' has 6 of 737 non-missing values (0.81%) that are negative.",
+        "fix": {
+          "fix_id": "set_missing",
+          "label": "Set impossible values to missing, then fill",
+          "op": "fix_invalid",
+          "columns": [
+            "salary"
+          ],
+          "params": {
+            "rule": "range",
+            "min": 0,
+            "max": null,
+            "action": "set_missing"
+          }
+        }
+      },
+      {
+        "code": "class_imbalance",
+        "columns": [
+          "churned"
+        ],
+        "points_gain": 6.0,
+        "effort": "low",
+        "headline": "Your target is 11:1 imbalanced (8.61% of 825 rows are '1').",
+        "fix": {
+          "fix_id": "class_weights",
+          "label": "Use balanced class weights, stratified split, PR-AUC",
+          "op": "modeling_option",
+          "columns": [
+            "churned"
+          ],
+          "params": {
+            "class_weight": "balanced",
+            "stratify": true,
+            "primary_metric": "pr_auc"
+          }
+        }
+      }
+    ],
+    "target_candidates": [
+      {
+        "column": "churned",
+        "task_type": "binary",
+        "confidence": 0.85,
+        "reasons": [
+          "Name contains the target-like word 'churned'.",
+          "It is the last column, where targets usually sit.",
+          "It has exactly two values, typical of a yes/no outcome."
+        ]
+      },
+      {
+        "column": "salary",
+        "task_type": "regression",
+        "confidence": 0.5,
+        "reasons": [
+          "Name contains the target-like word 'salary'."
+        ]
+      },
+      {
+        "column": "churn_score_leak",
+        "task_type": "regression",
+        "confidence": 0.5,
+        "reasons": [
+          "Name contains the target-like word 'churn'."
+        ]
+      },
+      {
+        "column": "account_type",
+        "task_type": "binary",
+        "confidence": 0.2,
+        "reasons": [
+          "It has exactly two values, typical of a yes/no outcome."
+        ]
+      },
+      {
+        "column": "department",
+        "task_type": "multiclass",
+        "confidence": 0.1,
+        "reasons": [
+          "It has 5 distinct categories."
+        ]
+      }
+    ],
+    "sampling": {
+      "sampled": false,
+      "n_rows_original": 825,
+      "n_rows_analysed": 825
+    },
+    "check_timings_ms": {
+      "missing_values": 303,
+      "duplicates": 74,
+      "constant_columns": 13,
+      "invalid_values": 60,
+      "mistyped_columns": 0,
+      "target_quality": 5,
+      "class_imbalance": 1,
+      "target_leakage": 676,
+      "redundant_columns": 51,
+      "multicollinearity": 15,
+      "split_shift": 0,
+      "repeated_entity_ids": 15,
+      "temporal_ordering": 0,
+      "high_cardinality": 5,
+      "dimensionality": 1,
+      "sensitive_attributes": 48,
+      "outliers": 602
+    },
+    "check_errors": [],
+    "checks_skipped": [],
+    "leakage_columns": [
+      "churn_score_leak"
+    ],
+    "n_findings": 12,
+    "config_snapshot": {
+      "seed": 42,
+      "sample_threshold": 200000,
+      "ml_check_max_rows": 20000,
+      "as_of": "2026-10-30",
+      "missing_min_pct": 0.0,
+      "max_categorical_cardinality_for_groups": 200,
+      "outlier_min_rate_pct": 1.0,
+      "multivariate_contamination": 0.02,
+      "leakage_model_auc": 0.95,
+      "leakage_corr": 0.85,
+      "leakage_mi": 0.7,
+      "vif_threshold": 10.0,
+      "redundant_corr": 0.999,
+      "collinear_corr": 0.95,
+      "approved_replacement_categories": [
+        "Unknown",
+        "unknown",
+        "Other",
+        "other",
+        "N/A",
+        "n/a",
+        "Unspecified",
+        "Missing"
+      ],
+      "allowed_categories": {},
+      "engine_version": "1.0.0"
+    },
+    "duration_ms": 1887,
+    "finished_at": "2026-10-29T23:11:29.141000",
+    "score_version": "1.0"
+  }
+}

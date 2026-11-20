@@ -1,0 +1,11 @@
+{
+  "git_commit_sha": "448091e4b124381f870dce81de3653cc29995789",
+  "python_version": "Python 3.12.14",
+  "venv_python": "C:\\Users\\WINDOWS 11\\OneDrive\\Documents\\GitHub\\Ml-ready-\\backend\\.venv\\Scripts\\python.exe",
+  "repo_root": "C:\\Users\\WINDOWS 11\\OneDrive\\Documents\\GitHub\\Ml-ready-",
+  "backend_dir": "C:\\Users\\WINDOWS 11\\OneDrive\\Documents\\GitHub\\Ml-ready-\\backend",
+  "workflow": "FastAPI TestClient guest auth -> demo dataset upload -> analysis job -> run_analysis benchmark suite",
+  "notes": [
+    "No application logic modified; evaluation-only workflow."
+  ]
+}
