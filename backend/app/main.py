@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from app.api import analyses, auth, cleaning, datasets, jobs, models, reports, rules, workspaces
 from app.config import get_settings
@@ -70,6 +70,10 @@ def create_app() -> FastAPI:
 
     for r in (auth.router, datasets.router, analyses.router, cleaning.router, models.router, jobs.router, reports.router, rules.router, workspaces.router):
         app.include_router(r, prefix="/api/v1")
+
+    @app.get("/", include_in_schema=False)
+    def root():
+        return RedirectResponse(url="/docs")
 
     @app.get("/api/v1/version", tags=["ops"])
     def version():
